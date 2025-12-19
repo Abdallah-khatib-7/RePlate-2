@@ -26,16 +26,49 @@ const Contact = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true); // Start submitting
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1500));
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  
+  try {
+    // Get the urgent checkbox value
+    const isUrgent = e.target.querySelector('input[type="checkbox"]').checked;
     
-    alert('Thank you for your message! We\'ll get back to you within 24 hours.');
-    setFormData({ name: '', email: '', subject: '', message: '', inquiryType: 'general' });
-    setIsSubmitting(false); // End submitting
-  };
+    // Prepare data for API
+    const formDataToSend = {
+      name: formData.name,
+      email: formData.email,
+      inquiryType: formData.inquiryType,
+      subject: formData.subject,
+      message: formData.message,
+      isUrgent: isUrgent
+    };
+
+    // Send to backend API
+    const response = await fetch('http://localhost:5000/api/contact/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formDataToSend)
+    });
+
+    const data = await response.json();
+
+    if (data.status === 'success') {
+      alert(data.message || 'Thank you for your message! We\'ll get back to you within 24 hours.');
+      setFormData({ name: '', email: '', subject: '', message: '', inquiryType: 'general' });
+    } else {
+      throw new Error(data.message || 'Failed to send message');
+    }
+
+  } catch (error) {
+    console.error('Form submission error:', error);
+    alert('Failed to send message. Please try again.');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   // Update the Live Chat action to open the chatbot
   const contactMethods = [
@@ -271,20 +304,21 @@ const Contact = () => {
   </div>
 
   {/* Priority and Additional Options */}
-  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-    <label className="flex items-center space-x-3 cursor-pointer group">
-      <input 
-        type="checkbox" 
-        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300"
-      />
-      <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors duration-200">
-        This is an urgent matter requiring immediate attention
-      </span>
-    </label>
-    <p className="text-xs text-gray-500 mt-2 ml-7">
-      Urgent requests will be prioritized and responded to within 2 business hours
-    </p>
-  </div>
+<div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+  <label className="flex items-center space-x-3 cursor-pointer group">
+    <input 
+      type="checkbox" 
+      id="isUrgent"
+      className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300"
+    />
+    <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors duration-200">
+      This is an urgent matter requiring immediate attention
+    </span>
+  </label>
+  <p className="text-xs text-gray-500 mt-2 ml-7">
+    Urgent requests will be prioritized and responded to within 2 business hours
+  </p>
+</div>
 
   {/* Submit Button */}
   <div className="pt-4">
