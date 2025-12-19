@@ -1,12 +1,16 @@
-// src/pages/Login.jsx
+// src/pages/Login.jsx - UPDATED VERSION
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 
+// Base URL for your backend
+const API_URL = 'http://localhost:5000/api';
+
 const Login = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,45 +31,100 @@ const Login = () => {
     });
   };
 
+  // ✅ FIXED: Email/Password Login
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login process
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // For demo purposes - always succeed
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userEmail', formData.email);
-    localStorage.setItem('authMethod', 'email');
-    
-    setIsLoading(false);
-    navigate('/main-dashboard');
+    setError('');
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.status !== 'success') {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // ✅ Store token and user data (from your backend)
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('authMethod', 'email');
+      
+      // If remember me is checked
+      if (formData.rememberMe) {
+        localStorage.setItem('rememberedEmail', formData.email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
+      // Redirect to dashboard
+      navigate('/main-dashboard');
+
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleGoogleSuccess = (credentialResponse) => {
-    // Decode the JWT token to get user info
-    const decoded = jwtDecode(credentialResponse.credential);
-    
-    // Store user info and login status
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userEmail', decoded.email);
-    localStorage.setItem('userName', decoded.name || 'User');
-    localStorage.setItem('authMethod', 'google');
-    localStorage.setItem('googleUser', JSON.stringify(decoded));
-    
-    // Redirect to dashboard
-    navigate('/main-dashboard');
+  // ✅ FIXED: Google Login
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      // Decode Google token
+      const decoded = jwtDecode(credentialResponse.credential);
+      
+      // Send to your backend
+      const response = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: decoded.email,
+          name: decoded.name,
+          googleId: decoded.sub
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.status !== 'success') {
+        throw new Error(data.message || 'Google login failed');
+      }
+
+      // ✅ Store token and user data (from your backend)
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('authMethod', 'google');
+      
+      // Redirect to dashboard
+      navigate('/main-dashboard');
+
+    } catch (error) {
+      console.error('Google login error:', error);
+      alert('Google login failed. Please try again.');
+    }
   };
 
   const handleGoogleError = () => {
     console.log('Google Login Failed');
-    alert('Google login failed. Please try again.');
+    setError('Google login failed. Please try again.');
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50 flex items-center justify-center p-4">
-      {/* Simplified Background - Reduced from 3 animated blobs to 1 static */}
+      {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100 rounded-full opacity-10"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-100 rounded-full opacity-10"></div>
@@ -80,7 +139,7 @@ const Login = () => {
             
             {/* Left Side - Brand & Visual */}
             <div className="bg-gradient-to-br from-emerald-600 to-cyan-600 p-8 flex flex-col justify-between relative overflow-hidden">
-              {/* Static background pattern - removed animations */}
+              {/* Background pattern */}
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-12 translate-x-12"></div>
               <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/10 rounded-full translate-y-10 -translate-x-10"></div>
               
@@ -102,7 +161,7 @@ const Login = () => {
                 </p>
               </div>
 
-              {/* Stats - Simplified */}
+              {/* Stats */}
               <div className="relative z-10 grid grid-cols-3 gap-4 pt-6 border-t border-white/20">
                 {[
                   { number: '10K+', label: 'Meals Saved' },
@@ -147,6 +206,13 @@ const Login = () => {
                     <span className="px-4 bg-white text-gray-500">Or continue with email</span>
                   </div>
                 </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+                    {error}
+                  </div>
+                )}
 
                 {/* Email Login Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">

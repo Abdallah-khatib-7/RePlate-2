@@ -1,29 +1,59 @@
+// backend/models/userModel.js - CORRECTED VERSION
 const { pool } = require('../config/database');
 
 class User {
   static async create(userData) {
-    const [result] = await pool.execute(
-      'INSERT INTO users (email, password, full_name, phone, address, user_type, google_id, email_verified) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        userData.email,
-        userData.password,
-        userData.full_name,
-        userData.phone,
-        userData.address,
+    console.log('📋 UserModel.create() called with:', userData);
+    
+    try {
+      // Handle NULL values properly
+      const sql = `
+        INSERT INTO users 
+        (email, password, full_name, phone, address, user_type, google_id, email_verified) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      const params = [
+        userData.email || null,
+        userData.password || null,
+        userData.full_name || null,
+        userData.phone || null,
+        userData.address || null,
         userData.user_type || 'recipient',
-        userData.google_id,
+        userData.google_id || null,
         userData.email_verified ? 1 : 0
-      ]
-    );
-    return result.insertId;
+      ];
+      
+      console.log('📝 SQL:', sql);
+      console.log('🔢 Parameters:', params);
+      
+      const [result] = await pool.execute(sql, params);
+      console.log('✅ Insert result:', result);
+      
+      return result.insertId;
+      
+    } catch (error) {
+      console.error('❌ UserModel.create() error:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error sqlMessage:', error.sqlMessage);
+      console.error('❌ Error sql:', error.sql);
+      throw error;
+    }
   }
 
   static async findByEmail(email) {
-    const [rows] = await pool.execute(
-      'SELECT * FROM users WHERE email = ?',
-      [email]
-    );
-    return rows[0];
+    try {
+      console.log('🔍 UserModel.findByEmail() called for:', email);
+      const [rows] = await pool.execute(
+        'SELECT * FROM users WHERE email = ?',
+        [email]
+      );
+      console.log('📊 Found users:', rows.length);
+      return rows[0];
+    } catch (error) {
+      console.error('❌ UserModel.findByEmail() error:', error);
+      return null;
+    }
   }
 
   static async findById(id) {

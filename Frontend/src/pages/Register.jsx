@@ -1,13 +1,14 @@
-// src/pages/Register.jsx
+// src/pages/Register.jsx - UPDATED VERSION
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import TermsOfService from './TermsOfService';
-import PrivacyPolicy from './PrivacyPolicy';
+
+const API_URL = 'http://localhost:5000/api';
 
 const Register = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userType, setUserType] = useState('foodLover');
+  const [error, setError] = useState('');
+  const [userType, setUserType] = useState('foodLover'); // Default to foodLover
   const [formData, setFormData] = useState({
     // Personal Information
     firstName: '',
@@ -41,37 +42,78 @@ const Register = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value
     });
+    setError(''); // Clear error on typing
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Passwords do not match!');
       setIsLoading(false);
       return;
     }
 
     // Validate terms acceptance
     if (!formData.terms) {
-      alert('Please accept the Terms of Service and Privacy Policy');
+      setError('Please accept the Terms of Service and Privacy Policy');
       setIsLoading(false);
       return;
     }
 
-    // Simulate registration process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Save user data (in real app, this would go to backend)
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userEmail', formData.email);
-    localStorage.setItem('userType', userType);
-    localStorage.setItem('userName', `${formData.firstName} ${formData.lastName}`);
-    
-    setIsLoading(false);
-    navigate('/main-dashboard');
+    try {
+      // Prepare data for backend
+      const fullName = `${formData.firstName} ${formData.lastName}`;
+      
+      // Map frontend user types to database user types
+      const dbUserType = userType === 'restaurant' ? 'donor' : 'recipient';
+      
+      const registrationData = {
+        email: formData.email,
+        password: formData.password,
+        full_name: fullName,
+        phone: formData.phone,
+        user_type: dbUserType
+      };
+
+      // Add address if it's a restaurant
+      if (userType === 'restaurant' && formData.address) {
+        registrationData.address = formData.address;
+      }
+
+      // Send registration request to backend
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registrationData)
+      });
+
+      const data = await response.json();
+
+      if (data.status !== 'success') {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      // ✅ Success! Save token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('authMethod', 'email');
+      localStorage.setItem('userType', userType);
+      
+      // Redirect to dashboard
+      navigate('/main-dashboard');
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const userTypes = [
@@ -135,10 +177,6 @@ const Register = () => {
               <h1 className="text-3xl font-bold text-white mb-2">Join Our Community</h1>
               <p className="text-blue-100">Start your journey to reduce food waste and save delicious meals</p>
             </div>
-            
-            {/* Floating Elements */}
-            <div className="absolute top-4 left-4 w-8 h-8 bg-white opacity-20 rounded-full animate-bounce"></div>
-            <div className="absolute bottom-4 right-4 w-6 h-6 bg-white opacity-30 rounded-full animate-pulse"></div>
           </div>
 
           <div className="p-8">
@@ -179,6 +217,13 @@ const Register = () => {
                 ))}
               </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               
@@ -259,12 +304,11 @@ const Register = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Restaurant Name *
+                        Restaurant Name
                       </label>
                       <input
                         type="text"
                         name="restaurantName"
-                        required
                         value={formData.restaurantName}
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
@@ -273,11 +317,10 @@ const Register = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Cuisine Type *
+                        Cuisine Type
                       </label>
                       <select
                         name="cuisineType"
-                        required
                         value={formData.cuisineType}
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
@@ -389,20 +432,10 @@ const Register = () => {
                   />
                   <span className="text-sm text-gray-600 group-hover:text-gray-800 transition-colors duration-200">
                     I agree to the{' '}
-
-
-
-                     <Link to='/terms' className="text-green-600 hover:text-green-700 font-medium">Terms of Service</Link>
-
-
+                    <Link to='/terms' className="text-green-600 hover:text-green-700 font-medium">Terms of Service</Link>
                     {' '}and{' '}
-
-
-                    <Link to='/privacy' href="#" className="text-green-600 hover:text-green-700 font-medium">Privacy Policy</Link>
+                    <Link to='/privacy' className="text-green-600 hover:text-green-700 font-medium">Privacy Policy</Link>
                     . I understand that my data will be processed in accordance with RePlate's privacy practices.
-
-
-
                   </span>
                 </label>
               </div>
@@ -411,12 +444,11 @@ const Register = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all  disabled:opacity-50 disabled:transform-none relative overflow-hidden group transform duration-500 delay-800"
+                className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 relative overflow-hidden group transform duration-500 delay-800"
               >
                 <span className="relative z-10">
                   {isLoading ? 'Creating Account...' : `Join as ${userType === 'foodLover' ? 'Food Lover' : 'Restaurant Partner'}`}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-green-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
                 {/* Loading Animation */}
                 {isLoading && (
@@ -439,24 +471,6 @@ const Register = () => {
                 </p>
               </div>
             </form>
-          </div>
-
-          {/* Benefits Section */}
-          <div className="bg-green-50 border-t border-green-200 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center text-sm text-green-800">
-              <div className="flex items-center justify-center space-x-2">
-                <span>💰</span>
-                <span>Save money on food</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <span>🌍</span>
-                <span>Reduce food waste</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2">
-                <span>❤️</span>
-                <span>Support local businesses</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>

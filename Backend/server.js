@@ -1,3 +1,4 @@
+// backend/server.js - Add at the top
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -24,20 +25,23 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-
 app.get('/', (req, res) => {
   res.json({ message: 'RePlate Backend API is running 🚀' });
 });
 
-
-
-// 404 handler - CORRECT
-app.use( (req, res) => {
+// 404 handler
+app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+
+// For testing, export app
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app; // ADD THIS LINE

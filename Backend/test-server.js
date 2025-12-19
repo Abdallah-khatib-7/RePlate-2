@@ -1,20 +1,27 @@
-// test-server.js
-const express = require('express');
-const app = express();
+// backend/test-register.js
+const request = require('supertest');
+const app = require('./server'); // Make sure server.js exports app
 
-// Simple test route
-app.get('/test', (req, res) => {
-  res.json({ message: 'Test working' });
-});
-
-// Try to import foodController
-try {
-  const foodController = require('./controllers/foodController');
-  console.log('✅ foodController imported successfully');
-} catch (error) {
-  console.error('❌ Failed to import foodController:', error.message);
+async function test() {
+  console.log('🧪 Testing registration API...');
+  
+  try {
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'api-test@example.com',
+        password: 'test123',
+        full_name: 'API Test User',
+        user_type: 'recipient'
+      })
+      .set('Content-Type', 'application/json');
+    
+    console.log('Status:', response.status);
+    console.log('Response:', response.body);
+    
+  } catch (error) {
+    console.error('Test failed:', error.message);
+  }
 }
 
-app.listen(5001, () => {
-  console.log('Test server on port 5001');
-});
+// First, let's make server.js export the app

@@ -1,19 +1,31 @@
+// backend/controllers/authController.js - SIMPLIFIED VERSION
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 
 const authController = {
-  // Register new user
+  // Register new user - SIMPLIFIED
   register: async (req, res) => {
+    console.log('=== REGISTRATION START ===');
+    
     try {
       const { email, password, full_name, phone, address, user_type } = req.body;
+      console.log('📦 Request data:', { email, full_name, user_type });
+
+      // Basic validation
+      if (!email || !password || !full_name) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Email, password, and full name are required'
+        });
+      }
 
       // Check if user exists
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
         return res.status(400).json({
           status: 'error',
-          message: 'User already exists'
+          message: 'User with this email already exists'
         });
       }
 
@@ -25,18 +37,22 @@ const authController = {
         email,
         password: hashedPassword,
         full_name,
-        phone,
-        address,
-        user_type
+        phone: phone || null,
+        address: address || null,
+        user_type: user_type || 'recipient'
       });
 
-      // Generate JWT token
+      console.log('✅ User created with ID:', userId);
+
+      // Generate token
       const token = jwt.sign(
         { id: userId, email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE }
+        process.env.JWT_SECRET || 'test-secret-123',
+        { expiresIn: '7d' }
       );
 
+      console.log('=== REGISTRATION SUCCESS ===');
+      
       res.status(201).json({
         status: 'success',
         message: 'User registered successfully',
@@ -45,19 +61,23 @@ const authController = {
           id: userId,
           email,
           full_name,
-          user_type
+          user_type: user_type || 'recipient'
         }
       });
+
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('=== REGISTRATION FAILED ===');
+      console.error('Error:', error.message);
+      console.error('Stack:', error.stack);
+      
       res.status(500).json({
         status: 'error',
-        message: 'Registration failed'
+        message: 'Registration failed: ' + error.message
       });
     }
   },
 
-  // Login user
+  // Keep login function as is
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -83,8 +103,8 @@ const authController = {
       // Generate JWT token
       const token = jwt.sign(
         { id: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE }
+        process.env.JWT_SECRET || 'test-secret-123',
+        { expiresIn: '7d' }
       );
 
       res.json({
