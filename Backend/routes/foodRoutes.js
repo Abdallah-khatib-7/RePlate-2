@@ -12,5 +12,7 @@ router.get('/listings/:id', foodController.getListingById);
 router.post('/listings', protect, foodController.createListing);
 router.post('/listings/:foodId/claim', protect, foodController.claimFood);
 router.delete('/listings/:id', protect, foodController.deleteListing);
+router.post('/reset-food-status', foodController.resetFoodStatus);
+
 
 module.exports = router;

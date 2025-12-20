@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const pool = require('./config/database'); // Add this line
 
 dotenv.config();
 
@@ -44,5 +45,15 @@ if (require.main === module) {
     console.log(`✅ Server running on port ${PORT}`);
   });
 }
+
+// Test database connection on startup
+pool.getConnection()
+  .then(connection => {
+    console.log('✅ Database connected successfully');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('❌ Database connection failed:', err);
+  });
 
 module.exports = app; // ADD THIS LINE

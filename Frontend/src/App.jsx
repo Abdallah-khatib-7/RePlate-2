@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';                  
 import Footer from './components/Footer';                
 import AppRouter from './router/AppRouter';      
-import MainDashboard from './pages/MainDashboard';
+import ClaimFood from './pages/ClaimFood';
 import  './styles/globals.css';
 import { LogoWithText } from './components/logo';
 import { useEffect } from 'react';
