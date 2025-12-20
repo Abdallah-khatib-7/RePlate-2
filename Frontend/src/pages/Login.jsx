@@ -68,7 +68,7 @@ const Login = () => {
       }
 
       // Redirect to dashboard
-      navigate('/main-dashboard');
+      navigate('/claim-food');
 
     } catch (error) {
       console.error('Login error:', error);

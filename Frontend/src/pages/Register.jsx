@@ -106,7 +106,7 @@ const Register = () => {
       localStorage.setItem('userType', userType);
       
       // Redirect to dashboard
-      navigate('/main-dashboard');
+      navigate('/claim-food');
 
     } catch (error) {
       console.error('Registration error:', error);

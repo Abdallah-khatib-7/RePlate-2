@@ -1,4 +1,4 @@
-// backend/config/database.js
+// backend/config/database.js - VERIFIED
 const mysql = require('mysql2');
 
 const pool = mysql.createPool({
@@ -23,4 +23,5 @@ pool.getConnection((err, connection) => {
   }
 });
 
+// Export the promise-based pool
 module.exports = pool.promise();

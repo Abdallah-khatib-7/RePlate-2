@@ -1,5 +1,5 @@
 // backend/models/userModel.js - CORRECTED VERSION
-const { pool } = require('../config/database');
+const pool = require('../config/database'); // Remove the { pool } destructuring
 
 class User {
   static async create(userData) {
@@ -27,10 +27,12 @@ class User {
       console.log('📝 SQL:', sql);
       console.log('🔢 Parameters:', params);
       
-      const [result] = await pool.execute(sql, params);
+      const result = await pool.execute(sql, params);
       console.log('✅ Insert result:', result);
       
-      return result.insertId;
+      // Handle the result structure properly
+      const rows = Array.isArray(result) ? result[0] : result;
+      return rows.insertId;
       
     } catch (error) {
       console.error('❌ UserModel.create() error:', error);
@@ -44,58 +46,110 @@ class User {
   static async findByEmail(email) {
     try {
       console.log('🔍 UserModel.findByEmail() called for:', email);
-      const [rows] = await pool.execute(
+      const result = await pool.execute(
         'SELECT * FROM users WHERE email = ?',
         [email]
       );
+      
+      // Handle different result structures
+      let rows;
+      if (Array.isArray(result) && Array.isArray(result[0])) {
+        rows = result[0]; // [rows, fields] structure
+      } else if (Array.isArray(result)) {
+        rows = result; // Direct array of rows
+      } else {
+        rows = []; // Default empty array
+      }
+      
       console.log('📊 Found users:', rows.length);
-      return rows[0];
+      return rows[0] || null;
     } catch (error) {
       console.error('❌ UserModel.findByEmail() error:', error);
+      console.error('❌ Full error object:', error);
       return null;
     }
   }
 
   static async findById(id) {
-    const [rows] = await pool.execute(
-      'SELECT id, email, full_name, phone, address, user_type, created_at FROM users WHERE id = ?',
-      [id]
-    );
-    return rows[0];
+    try {
+      const result = await pool.execute(
+        'SELECT id, email, full_name, phone, address, user_type, created_at FROM users WHERE id = ?',
+        [id]
+      );
+      
+      let rows;
+      if (Array.isArray(result) && Array.isArray(result[0])) {
+        rows = result[0];
+      } else if (Array.isArray(result)) {
+        rows = result;
+      } else {
+        rows = [];
+      }
+      
+      return rows[0] || null;
+    } catch (error) {
+      console.error('UserModel.findById() error:', error);
+      return null;
+    }
   }
 
   static async findByGoogleId(googleId) {
-    const [rows] = await pool.execute(
-      'SELECT * FROM users WHERE google_id = ?',
-      [googleId]
-    );
-    return rows[0];
+    try {
+      const result = await pool.execute(
+        'SELECT * FROM users WHERE google_id = ?',
+        [googleId]
+      );
+      
+      let rows;
+      if (Array.isArray(result) && Array.isArray(result[0])) {
+        rows = result[0];
+      } else if (Array.isArray(result)) {
+        rows = result;
+      } else {
+        rows = [];
+      }
+      
+      return rows[0] || null;
+    } catch (error) {
+      console.error('UserModel.findByGoogleId() error:', error);
+      return null;
+    }
   }
 
   static async updatePassword(id, hashedPassword) {
-    await pool.execute(
-      'UPDATE users SET password = ? WHERE id = ?',
-      [hashedPassword, id]
-    );
+    try {
+      await pool.execute(
+        'UPDATE users SET password = ? WHERE id = ?',
+        [hashedPassword, id]
+      );
+    } catch (error) {
+      console.error('UserModel.updatePassword() error:', error);
+      throw error;
+    }
   }
 
   static async updateProfile(id, updateData) {
-    const fields = [];
-    const values = [];
+    try {
+      const fields = [];
+      const values = [];
 
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(updateData[key]);
-      }
-    });
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] !== undefined) {
+          fields.push(`${key} = ?`);
+          values.push(updateData[key]);
+        }
+      });
 
-    if (fields.length === 0) return;
+      if (fields.length === 0) return;
 
-    values.push(id);
-    const query = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
-    
-    await pool.execute(query, values);
+      values.push(id);
+      const query = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+      
+      await pool.execute(query, values);
+    } catch (error) {
+      console.error('UserModel.updateProfile() error:', error);
+      throw error;
+    }
   }
 }
 
