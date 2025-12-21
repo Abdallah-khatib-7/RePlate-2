@@ -1,4 +1,4 @@
-// src/pages/Login.jsx - UPDATED VERSION
+// src/pages/Login.jsx - UPDATED VERSION with user_type redirect
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
@@ -31,7 +31,7 @@ const Login = () => {
     });
   };
 
-  // ✅ FIXED: Email/Password Login
+  // ✅ UPDATED: Email/Password Login with user_type redirect
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -55,10 +55,11 @@ const Login = () => {
         throw new Error(data.message || 'Login failed');
       }
 
-      // ✅ Store token and user data (from your backend)
+      // ✅ Store token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('authMethod', 'email');
+      localStorage.setItem('user_type', data.user.user_type);
       
       // If remember me is checked
       if (formData.rememberMe) {
@@ -67,8 +68,15 @@ const Login = () => {
         localStorage.removeItem('rememberedEmail');
       }
 
-      // Redirect to dashboard
-      navigate('/claim-food');
+      // ✅ NEW: Redirect based on user_type
+      const userType = data.user.user_type;
+      console.log('User type detected:', userType);
+      
+      if (userType === 'donor' || userType === 'restaurant') {
+        navigate('/post-food');
+      } else {
+        navigate('/claim-food');
+      }
 
     } catch (error) {
       console.error('Login error:', error);
@@ -78,7 +86,7 @@ const Login = () => {
     }
   };
 
-  // ✅ FIXED: Google Login
+  // ✅ UPDATED: Google Login with user_type redirect
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       // Decode Google token
@@ -103,13 +111,21 @@ const Login = () => {
         throw new Error(data.message || 'Google login failed');
       }
 
-      // ✅ Store token and user data (from your backend)
+      // ✅ Store token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('authMethod', 'google');
+      localStorage.setItem('user_type', data.user.user_type);
       
-      // Redirect to dashboard
-      navigate('/main-dashboard');
+      // ✅ NEW: Redirect based on user_type
+      const userType = data.user.user_type;
+      console.log('Google user type detected:', userType);
+      
+      if (userType === 'donor' || userType === 'restaurant') {
+        navigate('/post-food');
+      } else {
+        navigate('/claim-food');
+      }
 
     } catch (error) {
       console.error('Google login error:', error);

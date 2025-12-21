@@ -1,565 +1,685 @@
-// src/pages/PostFood.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const API_URL = 'http://localhost:5000/api';
+
 const PostFood = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  // Form state for new/editing listing
   const [formData, setFormData] = useState({
-    // Step 1: Basic Information
-    foodName: '',
-    foodCategory: '',
+    title: '',
     description: '',
-    quantity: 1,
-    
-    // Step 2: Pricing & Details
-    originalPrice: '',
-    discountPrice: '',
-    dietaryTags: [],
-    allergens: [],
-    
-    // Step 3: Pickup Information
-    pickupTime: '',
-    pickupDate: '',
-    location: '',
-    instructions: '',
-    
-    // Step 4: Restaurant Info
-    restaurantName: '',
-    contactEmail: '',
-    contactPhone: ''
+    price: '',
+    quantity: '',
+    city: '',
+    address: '',
+    pickup_time: '',
+    image_url: ''
   });
+  const [editingId, setEditingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [userType, setUserType] = useState('');
 
   useEffect(() => {
-    setIsVisible(true);
-    return () => setIsVisible(false);
+    checkUserTypeAndLoad();
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    if (type === 'checkbox') {
-      const updatedArray = checked 
-        ? [...formData[name], value]
-        : formData[name].filter(item => item !== value);
-      setFormData({ ...formData, [name]: updatedArray });
-    } else {
-      setFormData({ ...formData, [name]: value });
+  // ✅ NEW: Check if user is a donor before loading page
+  const checkUserTypeAndLoad = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please login first');
+        navigate('/login');
+        return;
+      }
+
+      // Get user info to check user_type
+      const response = await fetch(`${API_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        const userType = data.user.user_type;
+        setUserType(userType);
+        
+        if (userType === 'donor' || userType === 'restaurant') {
+          // User is donor/restaurant, proceed
+          setIsVisible(true);
+          fetchRestaurantListings();
+        } else {
+          // User is not donor, redirect to claim-food
+          alert('This page is for restaurant owners only. Redirecting to food listings...');
+          navigate('/claim-food');
+        }
+      } else {
+        throw new Error('Failed to get user info');
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      alert('Session expired. Please login again.');
+      localStorage.removeItem('token');
+      navigate('/login');
     }
+  };
+
+  const fetchRestaurantListings = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/food/my-listings`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setListings(data.listings || []);
+      } else {
+        throw new Error(data.message || 'Failed to fetch your listings');
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      setError('Failed to load your food listings. Please try again.');
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_type');
+    navigate('/');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    alert('Food listing created successfully! 🎉');
-    // Reset form
-    setFormData({
-      foodName: '', foodCategory: '', description: '', quantity: 1,
-      originalPrice: '', discountPrice: '', dietaryTags: [], allergens: [],
-      pickupTime: '', pickupDate: '', location: '', instructions: '',
-      restaurantName: '', contactEmail: '', contactPhone: ''
-    });
-    setCurrentStep(1);
-    setIsSubmitting(false);
+    try {
+      setSubmitting(true);
+      setError('');
+      
+      console.log('=== FORM SUBMISSION START ===');
+      console.log('Form data:', formData);
+      console.log('Editing ID:', editingId);
+      console.log('User type:', userType);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found, redirecting to login');
+        navigate('/login');
+        return;
+      }
+      
+      console.log('Token found, preparing request...');
+      
+      const url = editingId 
+        ? `${API_URL}/food/listings/${editingId}`
+        : `${API_URL}/food/listings`;
+      
+      const method = editingId ? 'PUT' : 'POST';
+      
+      // Format pickup_time for MySQL (convert to ISO string)
+      let formattedPickupTime = formData.pickup_time;
+      if (formData.pickup_time) {
+        const date = new Date(formData.pickup_time);
+        formattedPickupTime = date.toISOString().slice(0, 19).replace('T', ' ');
+        console.log('Formatted pickup time:', formattedPickupTime);
+      }
+      
+      const formattedData = {
+        title: formData.title,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        quantity: parseInt(formData.quantity),
+        city: formData.city,
+        address: formData.address,
+        pickup_time: formattedPickupTime,
+        image_url: formData.image_url || null
+      };
+      
+      // Don't send expiry_time if not provided
+      if (formData.expiry_time) {
+        const expiryDate = new Date(formData.expiry_time);
+        formattedData.expiry_time = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
+      }
+      
+      console.log('Data to send:', formattedData);
+      console.log('Request URL:', url);
+      console.log('Request Method:', method);
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formattedData)
+      });
+      
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (data.status === 'success') {
+        console.log('Success!');
+        alert(editingId ? '✅ Listing updated successfully!' : '✅ Food listing created successfully!');
+        resetForm();
+        fetchRestaurantListings();
+      } else {
+        console.log('API returned error:', data.message);
+        throw new Error(data.message || 'Failed to save listing');
+      }
+    } catch (error) {
+      console.error('=== FORM SUBMISSION ERROR ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = error.message;
+      
+      // Try to extract more specific error message
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Cannot connect to server. Please check if the backend is running.';
+      } else if (error.message.includes('401') || error.message.includes('Authentication')) {
+        errorMessage = 'Session expired. Please login again.';
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else if (error.message.includes('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+      
+      setError(errorMessage);
+      alert(`Failed to save food listing: ${errorMessage}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 4));
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  const handleEdit = (listing) => {
+    // Format pickup_time for datetime-local input
+    let pickupTime = '';
+    if (listing.pickup_time) {
+      const date = new Date(listing.pickup_time);
+      pickupTime = date.toISOString().slice(0, 16);
+    }
+    
+    setFormData({
+      title: listing.title,
+      description: listing.description,
+      price: listing.price.toString(),
+      quantity: listing.quantity.toString(),
+      city: listing.city,
+      address: listing.address,
+      pickup_time: pickupTime,
+      image_url: listing.image_url || ''
+    });
+    setEditingId(listing.id);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  const categories = [
-    { id: 'mediterranean', name: 'Mediterranean', icon: '🥙' },
-    { id: 'sandwiches', name: 'Sandwiches', icon: '🥪' },
-    { id: 'pizza', name: 'Pizza', icon: '🍕' },
-    { id: 'salads', name: 'Salads', icon: '🥗' },
-    { id: 'asian', name: 'Asian', icon: '🍱' },
-    { id: 'bakery', name: 'Bakery', icon: '🥐' },
-    { id: 'mexican', name: 'Mexican', icon: '🌮' },
-    { id: 'desserts', name: 'Desserts', icon: '🍰' }
-  ];
+  const handleDelete = async (listingId) => {
+    if (!window.confirm('Are you sure you want to delete this listing?')) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/food/listings/${listingId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        alert('🗑️ Listing deleted successfully!');
+        fetchRestaurantListings();
+      } else {
+        throw new Error(data.message || 'Failed to delete listing');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert(`Failed to delete listing: ${error.message}`);
+    }
+  };
 
-  const dietaryTags = [
-    { id: 'vegan', name: 'Vegan', icon: '🌱' },
-    { id: 'vegetarian', name: 'Vegetarian', icon: '🥬' },
-    { id: 'gluten-free', name: 'Gluten-Free', icon: '🌾' },
-    { id: 'dairy-free', name: 'Dairy-Free', icon: '🥛' },
-    { id: 'nut-free', name: 'Nut-Free', icon: '🥜' },
-    { id: 'organic', name: 'Organic', icon: '🍃' }
-  ];
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      price: '',
+      quantity: '',
+      city: '',
+      address: '',
+      pickup_time: '',
+      image_url: ''
+    });
+    setEditingId(null);
+    setShowForm(false);
+  };
 
-  const allergens = [
-    'Gluten', 'Dairy', 'Nuts', 'Soy', 'Eggs', 'Shellfish', 'Fish', 'Sesame'
-  ];
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  const StepIndicator = () => (
-    <div className={`flex justify-between mb-8 transform transition-all duration-500 ${
-      isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-    }`}>
-      {[1, 2, 3, 4].map(step => (
-        <div key={step} className="flex flex-col items-center flex-1">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
-            step === currentStep
-              ? 'bg-green-500 text-white scale-110'
-              : step < currentStep
-              ? 'bg-green-100 text-green-600'
-              : 'bg-gray-200 text-gray-400'
-          }`}>
-            {step < currentStep ? '✓' : step}
-          </div>
-          <span className={`text-sm mt-2 font-medium ${
-            step === currentStep ? 'text-green-600' : 'text-gray-500'
-          }`}>
-            {['Food Details', 'Pricing', 'Pickup', 'Restaurant'][step - 1]}
-          </span>
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'available':
+        return <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">Available</span>;
+      case 'reserved':
+        return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">Reserved</span>;
+      case 'claimed':
+        return <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold">Claimed</span>;
+      case 'expired':
+        return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-bold">Expired</span>;
+      default:
+        return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-bold">{status}</span>;
+    }
+  };
+
+  // Don't show anything if user type check is still running
+  if (!userType && !error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking user permissions...</p>
         </div>
-      ))}
-    </div>
-  );
+      </div>
+    );
+  }
+
+  const totalListings = listings.length;
+  const availableCount = listings.filter(l => l.status === 'available').length;
+  const claimedCount = listings.filter(l => l.status === 'claimed').length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header */}
-        <div className={`text-center mb-8 transform transition-all duration-1000 ${
-          isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-        }`}>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-            List Surplus Food
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Turn your surplus food into opportunities. Help reduce waste while earning back costs.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+      {/* Simple Header - Just Logout */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            Logged in as: <span className="font-bold text-orange-600">{userType}</span>
+          </div>
+          <div>
+            <button
+              onClick={async () => {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/food/debug-info`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                console.log('Debug Info:', data);
+                alert(`User ID: ${data.user.id}\nUser Type: ${data.user.user_type}\nMy Listings: ${data.user_listings.length}`);
+              }}
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors duration-200 mr-2"
+            >
+              Debug
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200"
+            >
+              Logout
+            </button>
+          </div>
         </div>
+      </div>
 
-        <div className={`bg-white rounded-3xl shadow-2xl p-8 transform transition-all duration-500 delay-200 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-        }`}>
-          
-          <StepIndicator />
-
-          <form onSubmit={handleSubmit}>
-            
-            {/* Step 1: Food Details */}
-            {currentStep === 1 && (
-              <div className={`space-y-6 transform transition-all duration-500 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
-              }`}>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Food Information</h2>
-                
-                {/* Food Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Food Item Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="foodName"
-                    required
-                    value={formData.foodName}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    placeholder="e.g., Mediterranean Platter, Artisan Sandwiches"
-                  />
-                </div>
-
-                {/* Category Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Food Category *
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {categories.map(category => (
-                      <button
-                        key={category.id}
-                        type="button"
-                        onClick={() => setFormData({...formData, foodCategory: category.id})}
-                        className={`flex flex-col items-center p-4 border-2 rounded-xl transition-all duration-200 transform hover:scale-105 ${
-                          formData.foodCategory === category.id
-                            ? 'border-green-500 bg-green-50 text-green-700'
-                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-green-300'
-                        }`}
-                      >
-                        <span className="text-2xl mb-2">{category.icon}</span>
-                        <span className="text-sm font-medium">{category.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description *
-                  </label>
-                  <textarea
-                    name="description"
-                    required
-                    rows={4}
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 resize-none"
-                    placeholder="Describe the food items, ingredients, and any special notes..."
-                  />
-                </div>
-
-                {/* Quantity */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Available Quantity *
-                  </label>
-                  <div className="flex items-center space-x-4">
-                    <button
-                      type="button"
-                      onClick={() => setFormData({...formData, quantity: Math.max(1, formData.quantity - 1)})}
-                      className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-xl hover:bg-gray-200 transition-colors duration-200"
-                    >
-                      -
-                    </button>
-                    <span className="text-2xl font-bold text-gray-900 w-12 text-center">
-                      {formData.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({...formData, quantity: formData.quantity + 1})}
-                      className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-xl hover:bg-gray-200 transition-colors duration-200"
-                    >
-                      +
-                    </button>
-                    <span className="text-gray-600 ml-4">servings/portions</span>
-                  </div>
-                </div>
+      {/* Main Content */}
+      <div className={`py-8 transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Restaurant Dashboard Header */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">🍽️ Restaurant Dashboard</h1>
+                <p className="text-gray-600">Manage your food listings, update quantities, and add new items</p>
               </div>
-            )}
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowForm(!showForm);
+                }}
+                className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+              >
+                {showForm ? '❌ Cancel' : '➕ Add New Listing'}
+              </button>
+            </div>
 
-            {/* Step 2: Pricing & Dietary Info */}
-            {currentStep === 2 && (
-              <div className={`space-y-6 transform transition-all duration-500 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
-              }`}>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Pricing & Dietary Information</h2>
-                
-                {/* Pricing */}
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white rounded-xl shadow p-6">
+                <div className="text-2xl font-bold text-gray-900">{totalListings}</div>
+                <div className="text-gray-600">Total Listings</div>
+              </div>
+              <div className="bg-white rounded-xl shadow p-6">
+                <div className="text-2xl font-bold text-green-600">{availableCount}</div>
+                <div className="text-gray-600">Available</div>
+              </div>
+              <div className="bg-white rounded-xl shadow p-6">
+                <div className="text-2xl font-bold text-blue-600">{claimedCount}</div>
+                <div className="text-gray-600">Claimed</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Add/Edit Form */}
+          {showForm && (
+            <div className={`mb-8 bg-white rounded-2xl shadow-xl p-6 transform transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                {editingId ? '✏️ Edit Food Listing' : '➕ Add New Food Listing'}
+              </h2>
+              
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-6">
+                  {error}
+                </div>
+              )}
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Title */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Original Price ($) *
+                      Food Title *
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., Fresh Pizza Slices"
+                    />
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Price ($) *
                     </label>
                     <input
                       type="number"
-                      name="originalPrice"
-                      required
-                      step="0.01"
-                      value={formData.originalPrice}
+                      name="price"
+                      value={formData.price}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      placeholder="24.99"
+                      required
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., 5.99"
                     />
                   </div>
+
+                  {/* Quantity */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Surplus Price ($) *
+                      Quantity (meals) *
                     </label>
                     <input
                       type="number"
-                      name="discountPrice"
-                      required
-                      step="0.01"
-                      value={formData.discountPrice}
+                      name="quantity"
+                      value={formData.quantity}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      placeholder="8.99"
+                      required
+                      min="1"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., 10"
                     />
                   </div>
-                </div>
 
-                {/* Savings Display */}
-                {formData.originalPrice && formData.discountPrice && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-green-700 font-semibold">
-                        You're offering {Math.round((1 - formData.discountPrice / formData.originalPrice) * 100)}% off!
-                      </span>
-                      <span className="text-green-600 font-bold">
-                        Save ${(formData.originalPrice - formData.discountPrice).toFixed(2)} per item
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Dietary Tags */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Dietary Tags
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {dietaryTags.map(tag => (
-                      <label key={tag.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-xl hover:border-green-300 transition-colors duration-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name="dietaryTags"
-                          value={tag.id}
-                          checked={formData.dietaryTags.includes(tag.id)}
-                          onChange={handleInputChange}
-                          className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                        />
-                        <span className="text-lg">{tag.icon}</span>
-                        <span className="text-sm font-medium">{tag.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Allergens */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Contains Allergens
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {allergens.map(allergen => (
-                      <label key={allergen} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-xl hover:border-red-300 transition-colors duration-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name="allergens"
-                          value={allergen}
-                          checked={formData.allergens.includes(allergen)}
-                          onChange={handleInputChange}
-                          className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                        />
-                        <span className="text-sm font-medium">{allergen}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Pickup Information */}
-            {currentStep === 3 && (
-              <div className={`space-y-6 transform transition-all duration-500 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
-              }`}>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Pickup Details</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Pickup Date */}
+                  {/* City */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pickup Date *
+                      City *
                     </label>
                     <input
-                      type="date"
-                      name="pickupDate"
-                      required
-                      value={formData.pickupDate}
+                      type="text"
+                      name="city"
+                      value={formData.city}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., Beirut"
+                    />
+                  </div>
+
+                  {/* Address */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Address *
+                    </label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Full restaurant address"
                     />
                   </div>
 
                   {/* Pickup Time */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pickup Time *
+                      Pickup Date & Time *
                     </label>
                     <input
-                      type="time"
-                      name="pickupTime"
-                      required
-                      value={formData.pickupTime}
+                      type="datetime-local"
+                      name="pickup_time"
+                      value={formData.pickup_time}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
-                </div>
 
-                {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pickup Location *
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    required
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    placeholder="e.g., 123 Main Street, Kitchen entrance"
-                  />
-                </div>
-
-                {/* Special Instructions */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Special Pickup Instructions
-                  </label>
-                  <textarea
-                    name="instructions"
-                    rows={3}
-                    value={formData.instructions}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 resize-none"
-                    placeholder="Any special instructions for pickup..."
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Restaurant Information */}
-            {currentStep === 4 && (
-              <div className={`space-y-6 transform transition-all duration-500 ${
-                isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
-              }`}>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Restaurant Information</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Restaurant Name */}
+                  {/* Image URL */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Restaurant Name *
+                      Image URL (optional)
                     </label>
                     <input
-                      type="text"
-                      name="restaurantName"
-                      required
-                      value={formData.restaurantName}
+                      type="url"
+                      name="image_url"
+                      value={formData.image_url}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Your restaurant name"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe"
                     />
                   </div>
 
-                  {/* Contact Phone */}
-                  <div>
+                  {/* Description */}
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Contact Phone *
+                      Description *
                     </label>
-                    <input
-                      type="tel"
-                      name="contactPhone"
-                      required
-                      value={formData.contactPhone}
+                    <textarea
+                      name="description"
+                      value={formData.description}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                      placeholder="+1 (555) 123-4567"
+                      required
+                      rows="4"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Describe the food, ingredients, and any important details..."
                     />
                   </div>
                 </div>
 
-                {/* Contact Email */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Contact Email *
-                  </label>
-                  <input
-                    type="email"
-                    name="contactEmail"
-                    required
-                    value={formData.contactEmail}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                    placeholder="contact@yourrestaurant.com"
-                  />
+                {/* Form Actions */}
+                <div className="flex space-x-4 pt-4">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        {editingId ? 'Updating...' : 'Creating...'}
+                      </div>
+                    ) : (
+                      editingId ? '💾 Update Listing' : '✅ Create Listing'
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
                 </div>
+              </form>
+            </div>
+          )}
 
-                {/* Summary */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="font-semibold text-gray-900 mb-4">Listing Summary</h3>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between">
-                      <span>Food Item:</span>
-                      <span className="font-medium">{formData.foodName || 'Not specified'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Quantity:</span>
-                      <span className="font-medium">{formData.quantity} servings</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Price:</span>
-                      <span className="font-medium">
-                        ${formData.discountPrice || '0'} (was ${formData.originalPrice || '0'})
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Pickup:</span>
-                      <span className="font-medium">
-                        {formData.pickupDate} at {formData.pickupTime}
-                      </span>
+          {/* Restaurant Listings */}
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Your Food Listings ({listings.length})</h2>
+              <div className="text-sm text-gray-500">
+                Updated just now
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
+                {error}
+              </div>
+            ) : listings.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🍕</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">No food listings yet</h3>
+                <p className="text-gray-600 mb-6">Start by adding your first food listing!</p>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+                >
+                  ➕ Add First Listing
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {listings.map((listing, index) => (
+                  <div
+                    key={listing.id}
+                    className={`bg-gray-50 rounded-xl p-6 transform transition-all duration-300 hover:shadow-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                    style={{ transitionDelay: `${index * 100}ms` }}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      {/* Listing Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-3">
+                          {listing.image_url && (
+                            <img
+                              src={listing.image_url}
+                              alt={listing.title}
+                              className="w-16 h-16 object-cover rounded-lg"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+                              }}
+                            />
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-xl font-bold text-gray-900">{listing.title}</h3>
+                              {getStatusBadge(listing.status)}
+                            </div>
+                            <p className="text-gray-600 text-sm line-clamp-2">{listing.description}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                          <div>
+                            <div className="text-sm text-gray-500">Price</div>
+                            <div className="font-bold text-green-600">${listing.price}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Quantity</div>
+                            <div className="font-bold">{listing.quantity} meals</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Location</div>
+                            <div className="font-bold">{listing.city}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-500">Pickup</div>
+                            <div className="font-bold">{formatDate(listing.pickup_time)}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row md:flex-col gap-2">
+                        <button
+                          onClick={() => handleEdit(listing)}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors duration-200"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(listing.id)}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
             )}
-
-            {/* Navigation Buttons */}
-            <div className={`flex justify-between pt-8 mt-8 border-t border-gray-200 transform transition-all duration-500 delay-300 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-              <button
-                type="button"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-                className="flex items-center space-x-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span>←</span>
-                <span>Previous</span>
-              </button>
-
-              {currentStep < 4 ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="flex items-center space-x-2 bg-green-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-600 transition-all duration-200 transform hover:scale-105"
-                >
-                  <span>Next</span>
-                  <span>→</span>
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center space-x-2 bg-green-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-600 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Creating Listing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>🚀</span>
-                      <span>Publish Listing</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-
-        {/* Benefits Section */}
-        <div className={`mt-8 text-center transform transition-all duration-500 delay-500 ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-        }`}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
-            <div className="flex items-center justify-center space-x-2">
-              <span>💰</span>
-              <span>Recover food costs</span>
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              <span>🌍</span>
-              <span>Reduce food waste</span>
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              <span>👥</span>
-              <span>Reach new customers</span>
-            </div>
           </div>
         </div>
-
       </div>
     </div>
   );

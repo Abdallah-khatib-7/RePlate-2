@@ -10,7 +10,7 @@ function Layout() {
   const location = useLocation();
 
   // Routes where navbar should be hidden
-  const hideNavbarRoutes = ['/claim-food'];
+  const hideNavbarRoutes = ['/claim-food', '/post-food'];
 
   const hideNavbar = hideNavbarRoutes.includes(location.pathname);
 

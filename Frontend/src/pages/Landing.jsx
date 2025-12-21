@@ -212,7 +212,7 @@ const Landing = () => {
               <span>🚀</span>
               <span>Start Saving Food Now</span>
             </Link>
-            <Link to="/login" className="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white hover:text-green-600 transition-all duration-200 flex items-center space-x-3">
+            <Link to="/register" className="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white hover:text-green-600 transition-all duration-200 flex items-center space-x-3">
               <span>🏪</span>
               <span>List Your Restaurant</span>
             </Link>

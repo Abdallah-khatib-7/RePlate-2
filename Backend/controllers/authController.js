@@ -1,4 +1,4 @@
-// backend/controllers/authController.js - SIMPLIFIED VERSION
+// backend/controllers/authController.js - UPDATED VERSION with getCurrentUser
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
@@ -44,9 +44,13 @@ const authController = {
 
       console.log('✅ User created with ID:', userId);
 
-      // Generate token
+      // Generate token WITH user_type
       const token = jwt.sign(
-        { id: userId, email },
+        { 
+          id: userId, 
+          email,
+          user_type: user_type || 'recipient'
+        },
         process.env.JWT_SECRET || 'test-secret-123',
         { expiresIn: '7d' }
       );
@@ -77,7 +81,7 @@ const authController = {
     }
   },
 
-  // Keep login function as is
+  // ✅ UPDATED: Login with user_type in response
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -100,9 +104,13 @@ const authController = {
         });
       }
 
-      // Generate JWT token
+      // ✅ Generate JWT token WITH user_type
       const token = jwt.sign(
-        { id: user.id, email: user.email },
+        { 
+          id: user.id, 
+          email: user.email,
+          user_type: user.user_type 
+        },
         process.env.JWT_SECRET || 'test-secret-123',
         { expiresIn: '7d' }
       );
@@ -123,6 +131,42 @@ const authController = {
       res.status(500).json({
         status: 'error',
         message: 'Login failed'
+      });
+    }
+  },
+
+  // ✅ NEW: Get current user info
+  getCurrentUser: async (req, res) => {
+    try {
+      // The user should be attached to req by the protect middleware
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Not authenticated'
+        });
+      }
+
+      // Find user by ID
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'User not found'
+        });
+      }
+
+      // Return user info (excluding password)
+      const { password, ...userWithoutPassword } = user;
+      
+      res.json({
+        status: 'success',
+        user: userWithoutPassword
+      });
+    } catch (error) {
+      console.error('Get current user error:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to get user information'
       });
     }
   },
@@ -155,11 +199,15 @@ const authController = {
         }
       }
 
-      // Generate JWT token
+      // Generate JWT token WITH user_type
       const token = jwt.sign(
-        { id: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE }
+        { 
+          id: user.id, 
+          email: user.email,
+          user_type: user.user_type 
+        },
+        process.env.JWT_SECRET || 'test-secret-123',
+        { expiresIn: '7d' }
       );
 
       res.json({
