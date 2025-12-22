@@ -1,5 +1,5 @@
-// backend/models/userModel.js - CORRECTED VERSION
-const pool = require('../config/database'); // Remove the { pool } destructuring
+const { pool } = require('../config/database');
+
 
 class User {
   static async create(userData) {

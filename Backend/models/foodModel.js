@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 
+
 class Food {
   static async create(foodData) {
     const [result] = await pool.execute(

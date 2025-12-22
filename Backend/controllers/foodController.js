@@ -1,4 +1,5 @@
-const pool = require('../config/database');
+const { pool } = require('../config/database');
+
 
 const foodController = {
   // Get food listings (with status filter)

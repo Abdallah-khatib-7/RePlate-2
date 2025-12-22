@@ -1,4 +1,5 @@
-const pool = require('../config/database');
+const { pool } = require('../config/database');
+
 
 const dashboardController = {
   // Get active reservations for user
