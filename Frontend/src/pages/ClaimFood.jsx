@@ -70,38 +70,38 @@ const ClaimFood = () => {
   };
 
   const handleClaimFood = async (listingId) => {
-    try {
-      setClaiming(true);
-      
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/food/listings/${listingId}/claim`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          notes: 'I would like to claim this food'
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        alert('🎉 Successfully claimed! Check your dashboard for pickup details.');
-        // Refresh listings
-        fetchListings();
-        setSelectedListing(null);
-      } else {
-        throw new Error(data.message || 'Claim failed');
-      }
-    } catch (error) {
-      console.error('Claim error:', error);
-      alert(`Failed to claim food: ${error.message}`);
-    } finally {
-      setClaiming(false);
+  try {
+    setClaiming(true);
+    
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/food/listings/${listingId}/claim`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        notes: 'I would like to claim this food'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      alert(`🎉 Successfully claimed!\nYour confirmation code: ${data.confirmationCode}\n\nSave this code and show it at pickup!`);
+      // Refresh listings
+      fetchListings();
+      setSelectedListing(null);
+    } else {
+      throw new Error(data.message || 'Claim failed');
     }
-  };
+  } catch (error) {
+    console.error('Claim error:', error);
+    alert(`Failed to claim food: ${error.message}`);
+  } finally {
+    setClaiming(false);
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem('token');

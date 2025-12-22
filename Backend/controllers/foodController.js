@@ -1,6 +1,5 @@
 const { pool } = require('../config/database');
 
-
 const foodController = {
   // Get food listings (with status filter)
   getAvailableListings: async (req, res) => {
@@ -80,8 +79,82 @@ const foodController = {
       });
     }
   },
-       
-  
+
+  // Get all claims for a restaurant's listings
+  getRestaurantClaims: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Get all food listings by this restaurant
+      const [listings] = await pool.execute(
+        'SELECT id FROM food_listings WHERE donor_id = ?',
+        [userId]
+      );
+      
+      if (listings.length === 0) {
+        return res.json({
+          status: 'success',
+          claims: []
+        });
+      }
+      
+      const listingIds = listings.map(l => l.id);
+
+if (listingIds.length === 0) {
+  return res.json({
+    status: 'success',
+    claims: []
+  });
+}
+
+const placeholders = listingIds.map(() => '?').join(',');
+
+const [claims] = await pool.execute(`
+  SELECT 
+    c.*,
+    f.title as food_title,
+    f.quantity as food_quantity,
+    f.price as food_price,
+    f.pickup_time as food_pickup_time,
+    f.address as restaurant_address,
+    f.city as restaurant_city,
+    u.full_name as recipient_name,
+    u.email as recipient_email,
+    u.phone as recipient_phone
+  FROM claims c
+  JOIN food_listings f ON c.food_id = f.id
+  JOIN users u ON c.recipient_id = u.id
+  WHERE c.food_id IN (${placeholders})
+  ORDER BY c.claimed_at DESC
+`, listingIds);
+
+      
+      // Generate confirmation codes if not present
+      for (let claim of claims) {
+        if (!claim.confirmation_code) {
+          const code = generateConfirmationCode();
+          await pool.execute(
+            'UPDATE claims SET confirmation_code = ? WHERE id = ?',
+            [code, claim.id]
+          );
+          claim.confirmation_code = code;
+        }
+      }
+      
+      res.json({
+        status: 'success',
+        claims: claims
+      });
+      
+    } catch (error) {
+      console.error('Get restaurant claims error:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to fetch claims'
+      });
+    }
+  },
+
   // Get single listing by ID
   getListingById: async (req, res) => {
     try {
@@ -118,8 +191,7 @@ const foodController = {
     }
   },
 
-    // Create new listing
-    // Create new listing
+  // Create new listing
   createListing: async (req, res) => {
     try {
       console.log('=== CREATE LISTING REQUEST ===');
@@ -219,7 +291,6 @@ const foodController = {
   },
 
   // Update listing
-    // Update listing
   updateListing: async (req, res) => {
     try {
       const { id } = req.params;
@@ -330,7 +401,7 @@ const foodController = {
     }
   },
 
-  // Get restaurant's own listings (NEW METHOD for PostFood page)
+  // Get restaurant's own listings (for PostFood page)
   getMyListings: async (req, res) => {
     try {
       if (!req.user || !req.user.id) {
@@ -380,7 +451,7 @@ const foodController = {
     }
   },
 
-  // Claim food
+  // Claim food with confirmation code
   claimFood: async (req, res) => {
     try {
       const { foodId } = req.params;
@@ -429,19 +500,23 @@ const foodController = {
         });
       }
       
-      // Create claim
+      // Generate confirmation code
+      const confirmationCode = generateConfirmationCode();
+      
+      // Create claim with confirmation code
       const claimQuery = `
-        INSERT INTO claims (food_id, recipient_id, notes, status, claimed_at)
-        VALUES (?, ?, ?, 'pending', NOW())
+        INSERT INTO claims (food_id, recipient_id, notes, status, confirmation_code, claimed_at)
+        VALUES (?, ?, ?, 'pending', ?, NOW())
       `;
       
       const [claimResult] = await pool.execute(claimQuery, [
         foodId,
         req.user.id,
-        notes || null
+        notes || null,
+        confirmationCode
       ]);
       
-      // Update food status
+      // Update food status to reserved
       await pool.execute(
         'UPDATE food_listings SET status = ? WHERE id = ?',
         ['reserved', foodId]
@@ -450,7 +525,8 @@ const foodController = {
       res.json({
         status: 'success',
         message: 'Food claimed successfully!',
-        claimId: claimResult.insertId
+        claimId: claimResult.insertId,
+        confirmationCode: confirmationCode
       });
     } catch (error) {
       console.error('Claim food error:', error);
@@ -463,7 +539,6 @@ const foodController = {
   },
 
   // Delete listing
-    // Delete listing
   deleteListing: async (req, res) => {
     try {
       const { id } = req.params;
@@ -609,70 +684,100 @@ const foodController = {
     }
   },
 
-  // Update claim status (for donors to approve/reject claims)
+  // Update claim status (verify/complete)
   updateClaimStatus: async (req, res) => {
     try {
       const { claimId } = req.params;
-      const { status } = req.body;
+      const { status, verification_code } = req.body;
+      const userId = req.user.id;
       
-      if (!status || !['approved', 'rejected', 'completed'].includes(status)) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Invalid status. Must be: approved, rejected, or completed'
-        });
-      }
+      console.log('=== UPDATE CLAIM STATUS ===');
+      console.log('Claim ID:', claimId);
+      console.log('Status:', status);
+      console.log('Verification Code:', verification_code);
+      console.log('User ID:', userId);
       
-      // Check if claim exists and user owns the food
-      const [claimRows] = await pool.execute(`
-        SELECT c.*, f.donor_id 
+      // Verify the restaurant owns this food listing
+      const [claimCheck] = await pool.execute(`
+        SELECT f.donor_id, f.id as food_id 
         FROM claims c
         JOIN food_listings f ON c.food_id = f.id
         WHERE c.id = ?
       `, [claimId]);
       
-      if (claimRows.length === 0) {
+      if (claimCheck.length === 0) {
+        console.log('Claim not found');
         return res.status(404).json({
           status: 'error',
           message: 'Claim not found'
         });
       }
       
-      if (claimRows[0].donor_id !== req.user.id) {
+      console.log('Claim found, donor_id:', claimCheck[0].donor_id);
+      
+      if (claimCheck[0].donor_id !== userId) {
+        console.log('User not authorized');
         return res.status(403).json({
           status: 'error',
           message: 'Not authorized to update this claim'
         });
       }
       
-      // Update claim status
-      await pool.execute(
-        'UPDATE claims SET status = ?, updated_at = NOW() WHERE id = ?',
-        [status, claimId]
-      );
-      
-      // If claim is rejected or completed, update food status
-      if (status === 'rejected') {
-        await pool.execute(
-          'UPDATE food_listings SET status = ? WHERE id = ?',
-          ['available', claimRows[0].food_id]
+      // If verifying with code
+      if (verification_code) {
+        const [codeCheck] = await pool.execute(
+          'SELECT confirmation_code FROM claims WHERE id = ?',
+          [claimId]
         );
-      } else if (status === 'completed') {
+        
+        console.log('Checking code:', codeCheck[0]);
+        
+        if (!codeCheck[0] || codeCheck[0].confirmation_code !== verification_code) {
+          console.log('Invalid code');
+          return res.status(400).json({
+            status: 'error',
+            message: 'Invalid verification code'
+          });
+        }
+      }
+      
+      // Update claim status
+      let updateQuery = 'UPDATE claims SET status = ?';
+      const params = [status];
+      
+      if (status === 'completed') {
+        updateQuery += ', verified_at = NOW()';
+        // Also update food listing status to claimed
         await pool.execute(
           'UPDATE food_listings SET status = ? WHERE id = ?',
-          ['claimed', claimRows[0].food_id]
+          ['claimed', claimCheck[0].food_id]
+        );
+      } else if (status === 'cancelled') {
+        // Reset food listing status to available
+        await pool.execute(
+          'UPDATE food_listings SET status = ? WHERE id = ?',
+          ['available', claimCheck[0].food_id]
         );
       }
       
+      updateQuery += ' WHERE id = ?';
+      params.push(claimId);
+      
+      console.log('Executing query:', updateQuery, params);
+      await pool.execute(updateQuery, params);
+      
+      console.log('Claim status updated successfully');
+      
       res.json({
         status: 'success',
-        message: `Claim ${status} successfully`
+        message: 'Claim status updated successfully'
       });
+      
     } catch (error) {
       console.error('Update claim status error:', error);
       res.status(500).json({
         status: 'error',
-        message: 'Failed to update claim status',
-        error: error.message
+        message: 'Failed to update claim status'
       });
     }
   },
@@ -710,7 +815,7 @@ const foodController = {
     }
   },
 
-  // Simple check if user is donor (NEW METHOD for frontend check)
+  // Check user type
   checkUserType: async (req, res) => {
     try {
       if (!req.user || !req.user.id) {
@@ -751,8 +856,7 @@ const foodController = {
     }
   },
 
-
-    // Debug: Get current user info and listings
+  // Debug: Get current user info and listings
   debugInfo: async (req, res) => {
     try {
       console.log('=== DEBUG INFO REQUEST ===');
@@ -782,14 +886,41 @@ const foodController = {
       
       // Get user's listings
       const [listings] = await pool.execute(
-        'SELECT id, title, donor_id FROM food_listings WHERE donor_id = ?',
+        'SELECT id, title, donor_id, status FROM food_listings WHERE donor_id = ?',
         [req.user.id]
       );
       
-      // Get all listings for comparison
-      const [allListings] = await pool.execute(
-        'SELECT id, title, donor_id FROM food_listings'
-      );
+      // Get user's claims (as donor)
+      const listingIds = listings.map(l => l.id);
+
+if (listingIds.length === 0) {
+  return res.json({
+    status: 'success',
+    claims: []
+  });
+}
+
+const placeholders = listingIds.map(() => '?').join(',');
+
+const [claims] = await pool.execute(`
+  SELECT 
+    c.*,
+    f.title as food_title,
+    f.quantity as food_quantity,
+    f.price as food_price,
+    f.pickup_time as food_pickup_time,
+    f.address as restaurant_address,
+    f.city as restaurant_city,
+    u.full_name as recipient_name,
+    u.email as recipient_email,
+    u.phone as recipient_phone
+  FROM claims c
+  JOIN food_listings f ON c.food_id = f.id
+  JOIN users u ON c.recipient_id = u.id
+  WHERE c.food_id IN (${placeholders})
+  ORDER BY c.claimed_at DESC
+`, listingIds);
+
       
       res.json({
         status: 'success',
@@ -800,7 +931,7 @@ const foodController = {
           user_type: user.user_type
         },
         user_listings: listings,
-        all_listings: allListings,
+        user_claims: claims,
         is_donor: user.user_type === 'donor'
       });
       
@@ -812,7 +943,20 @@ const foodController = {
         error: error.message
       });
     }
-  },
+  }
+
+
+  
 };
+
+// Helper function to generate confirmation code
+function generateConfirmationCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 module.exports = foodController;

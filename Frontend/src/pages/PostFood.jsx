@@ -6,7 +6,9 @@ const API_URL = 'http://localhost:5000/api';
 const PostFood = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [listings, setListings] = useState([]);
+  const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingClaims, setLoadingClaims] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -25,12 +27,13 @@ const PostFood = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [userType, setUserType] = useState('');
+  const [activeTab, setActiveTab] = useState('listings'); // 'listings' or 'claims'
 
   useEffect(() => {
     checkUserTypeAndLoad();
   }, []);
 
-  // ✅ NEW: Check if user is a donor before loading page
+  // Check user type and load data
   const checkUserTypeAndLoad = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -57,6 +60,7 @@ const PostFood = () => {
           // User is donor/restaurant, proceed
           setIsVisible(true);
           fetchRestaurantListings();
+          fetchRestaurantClaims();
         } else {
           // User is not donor, redirect to claim-food
           alert('This page is for restaurant owners only. Redirecting to food listings...');
@@ -103,6 +107,29 @@ const PostFood = () => {
       setListings([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRestaurantClaims = async () => {
+    try {
+      setLoadingClaims(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/food/my-claims`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setClaims(data.claims || []);
+      } else {
+        setClaims([]);
+      }
+    } catch (error) {
+      console.error('Fetch claims error:', error);
+      setClaims([]);
+    } finally {
+      setLoadingClaims(false);
     }
   };
 
@@ -275,6 +302,67 @@ const PostFood = () => {
     }
   };
 
+  // Verify claim (mark as completed)
+  const verifyClaim = async (claimId, verificationCode = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/food/claims/${claimId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'completed',
+          verification_code: verificationCode || undefined
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        alert('✅ Order marked as completed!');
+        fetchRestaurantClaims(); // Refresh claims
+        fetchRestaurantListings(); // Refresh listings
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      console.error('Verify error:', error);
+      alert(`Failed to verify order: ${error.message}`);
+    }
+  };
+
+  // Cancel claim
+  const cancelClaim = async (claimId) => {
+    if (!window.confirm('Are you sure you want to cancel this claim?')) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/food/claims/${claimId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        alert('❌ Claim cancelled');
+        fetchRestaurantClaims();
+        fetchRestaurantListings(); // Refresh listings too
+      }
+    } catch (error) {
+      console.error('Cancel error:', error);
+      alert(`Failed to cancel: ${error.message}`);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: '',
@@ -316,6 +404,21 @@ const PostFood = () => {
     }
   };
 
+  const getClaimStatusBadge = (status) => {
+    switch(status) {
+      case 'pending':
+        return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">⏳ Pending</span>;
+      case 'confirmed':
+        return <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold">✅ Confirmed</span>;
+      case 'completed':
+        return <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">✅ Completed</span>;
+      case 'cancelled':
+        return <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold">❌ Cancelled</span>;
+      default:
+        return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-bold">{status}</span>;
+    }
+  };
+
   // Don't show anything if user type check is still running
   if (!userType && !error) {
     return (
@@ -330,7 +433,9 @@ const PostFood = () => {
 
   const totalListings = listings.length;
   const availableCount = listings.filter(l => l.status === 'available').length;
-  const claimedCount = listings.filter(l => l.status === 'claimed').length;
+  
+  const pendingClaims = claims.filter(c => c.status === 'pending').length;
+  const completedClaims = claims.filter(c => c.status === 'completed').length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
@@ -349,7 +454,7 @@ const PostFood = () => {
                 });
                 const data = await response.json();
                 console.log('Debug Info:', data);
-                alert(`User ID: ${data.user.id}\nUser Type: ${data.user.user_type}\nMy Listings: ${data.user_listings.length}`);
+                alert(`User ID: ${data.user.id}\nUser Type: ${data.user.user_type}\nMy Listings: ${data.user_listings.length}\nMy Claims: ${data.user_claims?.length || 0}`);
               }}
               className="px-4 py-2 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors duration-200 mr-2"
             >
@@ -373,7 +478,7 @@ const PostFood = () => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">🍽️ Restaurant Dashboard</h1>
-                <p className="text-gray-600">Manage your food listings, update quantities, and add new items</p>
+                <p className="text-gray-600">Manage your food listings, update quantities, and track orders</p>
               </div>
               <button
                 onClick={() => {
@@ -387,7 +492,7 @@ const PostFood = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               <div className="bg-white rounded-xl shadow p-6">
                 <div className="text-2xl font-bold text-gray-900">{totalListings}</div>
                 <div className="text-gray-600">Total Listings</div>
@@ -397,8 +502,12 @@ const PostFood = () => {
                 <div className="text-gray-600">Available</div>
               </div>
               <div className="bg-white rounded-xl shadow p-6">
-                <div className="text-2xl font-bold text-blue-600">{claimedCount}</div>
-                <div className="text-gray-600">Claimed</div>
+                <div className="text-2xl font-bold text-blue-600">{pendingClaims}</div>
+                <div className="text-gray-600">Pending Orders</div>
+              </div>
+              <div className="bg-white rounded-xl shadow p-6">
+                <div className="text-2xl font-bold text-purple-600">{completedClaims}</div>
+                <div className="text-gray-600">Completed Orders</div>
               </div>
             </div>
           </div>
@@ -576,106 +685,261 @@ const PostFood = () => {
             </div>
           )}
 
-          {/* Restaurant Listings */}
+          {/* Restaurant Dashboard Tabs */}
           <div className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Your Food Listings ({listings.length})</h2>
-              <div className="text-sm text-gray-500">
-                Updated just now
-              </div>
+            {/* Tab Navigation */}
+            <div className="flex border-b border-gray-200 mb-6">
+              <button
+                onClick={() => setActiveTab('listings')}
+                className={`px-4 py-2 font-semibold text-lg ${activeTab === 'listings' 
+                  ? 'border-b-2 border-orange-500 text-orange-600' 
+                  : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                🍽️ My Listings ({listings.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('claims')}
+                className={`px-4 py-2 font-semibold text-lg ${activeTab === 'claims' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                📦 Orders & Claims ({claims.length})
+              </button>
             </div>
 
-            {/* Loading State */}
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-              </div>
-            ) : error ? (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
-                {error}
-              </div>
-            ) : listings.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">🍕</div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">No food listings yet</h3>
-                <p className="text-gray-600 mb-6">Start by adding your first food listing!</p>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
-                >
-                  ➕ Add First Listing
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {listings.map((listing, index) => (
-                  <div
-                    key={listing.id}
-                    className={`bg-gray-50 rounded-xl p-6 transform transition-all duration-300 hover:shadow-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                    style={{ transitionDelay: `${index * 100}ms` }}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      {/* Listing Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-3">
-                          {listing.image_url && (
-                            <img
-                              src={listing.image_url}
-                              alt={listing.title}
-                              className="w-16 h-16 object-cover rounded-lg"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
-                              }}
-                            />
-                          )}
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-xl font-bold text-gray-900">{listing.title}</h3>
-                              {getStatusBadge(listing.status)}
-                            </div>
-                            <p className="text-gray-600 text-sm line-clamp-2">{listing.description}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                          <div>
-                            <div className="text-sm text-gray-500">Price</div>
-                            <div className="font-bold text-green-600">${listing.price}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Quantity</div>
-                            <div className="font-bold">{listing.quantity} meals</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Location</div>
-                            <div className="font-bold">{listing.city}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Pickup</div>
-                            <div className="font-bold">{formatDate(listing.pickup_time)}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row md:flex-col gap-2">
-                        <button
-                          onClick={() => handleEdit(listing)}
-                          className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors duration-200"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(listing.id)}
-                          className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200"
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    </div>
+            {/* Listings Tab */}
+            {activeTab === 'listings' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Your Food Listings ({listings.length})</h2>
+                  <div className="text-sm text-gray-500">
+                    Updated just now
                   </div>
-                ))}
+                </div>
+
+                {/* Loading State */}
+                {loading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                  </div>
+                ) : error ? (
+                  <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
+                    {error}
+                  </div>
+                ) : listings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">🍕</div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">No food listings yet</h3>
+                    <p className="text-gray-600 mb-6">Start by adding your first food listing!</p>
+                    <button
+                      onClick={() => setShowForm(true)}
+                      className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+                    >
+                      ➕ Add First Listing
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {listings.map((listing, index) => (
+                      <div
+                        key={listing.id}
+                        className={`bg-gray-50 rounded-xl p-6 transform transition-all duration-300 hover:shadow-md ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                        style={{ transitionDelay: `${index * 100}ms` }}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          {/* Listing Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-4 mb-3">
+                              {listing.image_url && (
+                                <img
+                                  src={listing.image_url}
+                                  alt={listing.title}
+                                  className="w-16 h-16 object-cover rounded-lg"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+                                  }}
+                                />
+                              )}
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-xl font-bold text-gray-900">{listing.title}</h3>
+                                  {getStatusBadge(listing.status)}
+                                </div>
+                                <p className="text-gray-600 text-sm line-clamp-2">{listing.description}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                              <div>
+                                <div className="text-sm text-gray-500">Price</div>
+                                <div className="font-bold text-green-600">${listing.price}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-500">Quantity</div>
+                                <div className="font-bold">{listing.quantity} meals</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-500">Location</div>
+                                <div className="font-bold">{listing.city}</div>
+                              </div>
+                              <div>
+                                <div className="text-sm text-gray-500">Pickup</div>
+                                <div className="font-bold">{formatDate(listing.pickup_time)}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-col sm:flex-row md:flex-col gap-2">
+                            <button
+                              onClick={() => handleEdit(listing)}
+                              className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors duration-200"
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(listing.id)}
+                              className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Claims Tab */}
+            {activeTab === 'claims' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Customer Orders</h3>
+                  <div className="text-sm text-gray-500">
+                    {pendingClaims} pending, {completedClaims} completed
+                  </div>
+                </div>
+
+                {loadingClaims ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : claims.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">📦</div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">No orders yet</h3>
+                    <p className="text-gray-600">When customers claim your food, orders will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {claims.map((claim, index) => (
+                      <div
+                        key={claim.id}
+                        className={`bg-gray-50 rounded-xl p-6 transform transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                        style={{ transitionDelay: `${index * 100}ms` }}
+                      >
+                        <div className="flex flex-col lg:flex-row gap-6">
+                          {/* Order Info */}
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h4 className="text-lg font-bold text-gray-900">{claim.food_title}</h4>
+                                <p className="text-sm text-gray-600">Order #{claim.id}</p>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                {getClaimStatusBadge(claim.status)}
+                                <div className="text-sm text-gray-500 mt-1">
+                                  Claimed: {formatDate(claim.claimed_at)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <div className="bg-white p-3 rounded-lg">
+                                <div className="text-sm text-gray-500">Customer</div>
+                                <div className="font-bold">{claim.recipient_name}</div>
+                                <div className="text-sm text-gray-600">{claim.recipient_phone || 'No phone'}</div>
+                              </div>
+                              
+                              <div className="bg-white p-3 rounded-lg">
+                                <div className="text-sm text-gray-500">Pickup Time</div>
+                                <div className="font-bold">{formatDate(claim.food_pickup_time)}</div>
+                                <div className="text-sm text-gray-600">{claim.restaurant_city}</div>
+                              </div>
+                              
+                              <div className="bg-white p-3 rounded-lg">
+                                <div className="text-sm text-gray-500">Confirmation Code</div>
+                                <div className="font-bold text-xl text-blue-600">
+                                  {claim.confirmation_code || 'PENDING'}
+                                </div>
+                                <div className="text-sm text-gray-600">Show this to customer</div>
+                              </div>
+                            </div>
+
+                            {/* Customer Notes */}
+                            {claim.notes && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                <div className="text-sm font-semibold text-blue-800 mb-1">Customer Notes:</div>
+                                <div className="text-sm text-blue-700">{claim.notes}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-col space-y-2 min-w-[200px]">
+                            {claim.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    const code = prompt('Enter 6-digit confirmation code to verify pickup:', '');
+                                    if (code) {
+                                      verifyClaim(claim.id, code.trim());
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors duration-200"
+                                >
+                                  ✅ Verify Pickup
+                                </button>
+                                <button
+                                  onClick={() => cancelClaim(claim.id)}
+                                  className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200"
+                                >
+                                  ❌ Cancel Order
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    alert(`Confirmation Code: ${claim.confirmation_code}\n\nShare this code with the customer. They must show this to you for verification.`);
+                                  }}
+                                  className="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors duration-200"
+                                >
+                                  📋 View Code
+                                </button>
+                              </>
+                            )}
+                            
+                            {claim.status === 'completed' && (
+                              <div className="text-center p-3 bg-green-50 rounded-lg">
+                                <div className="text-green-600 font-bold">✅ Verified</div>
+                                <div className="text-sm text-green-500">
+                                  {claim.verified_at ? formatDate(claim.verified_at) : 'Recently'}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {claim.status === 'cancelled' && (
+                              <div className="text-center p-3 bg-red-50 rounded-lg">
+                                <div className="text-red-600 font-bold">❌ Cancelled</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

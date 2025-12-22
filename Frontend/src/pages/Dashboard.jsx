@@ -7,11 +7,12 @@ const API_URL = 'http://localhost:5000/api';
 const Dashboard = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [ setError] = useState('');
+  const [ setError] = useState(''); // Fixed: Added error variable
   const [userInfo, setUserInfo] = useState(null);
   const [activeReservations, setActiveReservations] = useState([]);
   const [pickupHistory, setPickupHistory] = useState([]);
   const [currentOrder, setCurrentOrder] = useState(null);
+  const [myClaims, setMyClaims] = useState([]);
   const [stats, setStats] = useState({
     totalSpent: 0,
     mealsSaved: 0,
@@ -27,6 +28,22 @@ const Dashboard = () => {
     checkAuthAndLoadData();
   }, []);
 
+  const fetchMyClaims = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/food/user-claims`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await response.json();
+      if (data.status === 'success') {
+        setMyClaims(data.claims);
+      }
+    } catch (error) {
+      console.error('Fetch my claims error:', error);
+    }
+  };
+
   const checkAuthAndLoadData = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -40,7 +57,8 @@ const Dashboard = () => {
         fetchUserInfo(),
         fetchActiveReservations(),
         fetchPickupHistory(),
-        fetchDashboardStats()
+        fetchDashboardStats(),
+        fetchMyClaims() // Added: Fetch user's claims
       ]);
 
       setIsVisible(true);
@@ -146,6 +164,7 @@ const Dashboard = () => {
         // Refresh data
         fetchActiveReservations();
         fetchDashboardStats();
+        fetchMyClaims(); // Refresh claims after cancellation
       } else {
         throw new Error(data.message || 'Failed to cancel reservation');
       }
@@ -287,6 +306,92 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+
+          {/* My Claimed Food Section */}
+          {myClaims.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 pb-4 border-b">📦 My Claimed Food</h2>
+              <div className="space-y-4">
+                {myClaims.map(claim => (
+                  <div key={claim.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          {claim.image_url && (
+                            <img
+                              src={claim.image_url}
+                              alt={claim.title}
+                              className="w-12 h-12 object-cover rounded-lg"
+                            />
+                          )}
+                          <div>
+                            <h4 className="font-bold text-gray-900">{claim.title}</h4>
+                            <p className="text-sm text-gray-600">{claim.donor_name} • {claim.city}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-500">Pickup:</span>
+                            <span className="font-medium ml-1">{formatDate(claim.pickup_time)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Price:</span>
+                            <span className="font-medium ml-1 text-green-600">${claim.price}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Status:</span>
+                            <span className={`font-bold ml-1 ${
+                              claim.status === 'completed' ? 'text-green-600' : 
+                              claim.status === 'confirmed' ? 'text-blue-600' : 
+                              claim.status === 'pending' ? 'text-yellow-600' : 
+                              'text-red-600'
+                            }`}>
+                              {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Claimed:</span>
+                            <span className="font-medium ml-1">{formatDate(claim.claimed_at)}</span>
+                          </div>
+                        </div>
+                        {claim.notes && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium">Your note:</span> {claim.notes}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center md:text-right">
+                        <div className="text-sm text-gray-500 mb-1">Confirmation Code</div>
+                        <div className="text-xl font-bold text-blue-600">{claim.confirmation_code || 'N/A'}</div>
+                        <div className="text-xs text-gray-500 mt-1">Show this at pickup</div>
+                        {claim.verified_at && (
+                          <div className="mt-2 text-sm text-green-600">
+                            ✅ Verified at: {formatDate(claim.verified_at)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {myClaims.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+              <div className="text-center py-8">
+                <div className="text-4xl mb-3">📦</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No claimed food yet</h3>
+                <p className="text-gray-600 mb-4">When you claim food, it will appear here with a confirmation code.</p>
+                <button
+                  onClick={() => navigate('/claim-food')}
+                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  🍽️ Browse Available Food
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Current Order & Active Reservations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
