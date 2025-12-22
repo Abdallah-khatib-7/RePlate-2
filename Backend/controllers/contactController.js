@@ -22,6 +22,15 @@ const contactController = {
         });
       }
 
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid email format'
+        });
+      }
+
       // Create contact message
       const contactId = await Contact.create({
         full_name,
@@ -31,6 +40,8 @@ const contactController = {
         message,
         is_urgent: is_urgent || false
       });
+
+      console.log('Message saved successfully with ID:', contactId);
 
       res.status(201).json({
         status: 'success',
@@ -42,7 +53,9 @@ const contactController = {
       console.error('Contact submission error:', error);
       res.status(500).json({
         status: 'error',
-        message: 'Failed to send message. Please try again.'
+        message: 'Failed to send message. Please try again.',
+        // Remove this in production, for debugging only:
+        debug: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   },
@@ -80,7 +93,14 @@ const contactController = {
         });
       }
 
-      await Contact.updateStatus(id, status);
+      const affectedRows = await Contact.updateStatus(id, status);
+      
+      if (affectedRows === 0) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Message not found'
+        });
+      }
 
       res.json({
         status: 'success',
