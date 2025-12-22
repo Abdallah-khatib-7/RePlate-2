@@ -120,7 +120,11 @@ const ClaimFood = () => {
         return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-bold">{status}</span>;
     }
   };
+    
 
+    const handleDashboard = () => {
+    navigate('/dashboard');
+  };
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -144,12 +148,20 @@ const ClaimFood = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-4 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">🍽️ Food Rescue Platform</h1>
+              <div className="flex items-center gap-2">
+             <button
+                onClick={handleDashboard}
+                className="px-6 py-2 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors duration-200"
+              >
+                📊 Dashboard
+              </button>
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors duration-200"
             >
               Logout
             </button>
+            </div>
           </div>
         </div>
       </div>

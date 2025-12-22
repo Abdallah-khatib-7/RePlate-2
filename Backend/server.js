@@ -22,6 +22,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/contact', contactRoutes);
+// Add this line where you define your routes
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });

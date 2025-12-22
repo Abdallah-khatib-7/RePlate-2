@@ -5,12 +5,12 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AppRouter from './router/AppRouter';
 import './styles/globals.css';
-
+import Dashboard from './pages/Dashboard';
 function Layout() {
   const location = useLocation();
 
   // Routes where navbar should be hidden
-  const hideNavbarRoutes = ['/claim-food', '/post-food'];
+  const hideNavbarRoutes = ['/claim-food', '/post-food', '/dashboard'];
 
   const hideNavbar = hideNavbarRoutes.includes(location.pathname);
 
