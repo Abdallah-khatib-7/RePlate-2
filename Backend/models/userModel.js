@@ -1,6 +1,5 @@
 const { pool } = require('../config/database');
 
-
 class User {
   static async create(userData) {
     console.log('📋 UserModel.create() called with:', userData);
@@ -62,6 +61,13 @@ class User {
       }
       
       console.log('📊 Found users:', rows.length);
+      
+      if (rows.length > 0) {
+        console.log('📋 User data includes is_admin:', rows[0].is_admin);
+        console.log('📋 User data includes user_type:', rows[0].user_type);
+        console.log('📋 User data includes admin_role:', rows[0].admin_role);
+      }
+      
       return rows[0] || null;
     } catch (error) {
       console.error('❌ UserModel.findByEmail() error:', error);
@@ -70,10 +76,11 @@ class User {
     }
   }
 
+  // ✅ UPDATED: Include is_admin and admin_role in findById
   static async findById(id) {
     try {
       const result = await pool.execute(
-        'SELECT id, email, full_name, phone, address, user_type, created_at FROM users WHERE id = ?',
+        'SELECT id, email, full_name, phone, address, user_type, is_admin, admin_role, created_at FROM users WHERE id = ?',
         [id]
       );
       

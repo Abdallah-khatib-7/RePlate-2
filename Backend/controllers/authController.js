@@ -1,4 +1,4 @@
-// backend/controllers/authController.js - UPDATED VERSION with getCurrentUser
+// backend/controllers/authController.js - UPDATED VERSION with admin support
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
@@ -44,12 +44,16 @@ const authController = {
 
       console.log('✅ User created with ID:', userId);
 
-      // Generate token WITH user_type
+      // Get the full user data including is_admin
+      const newUser = await User.findByEmail(email);
+      
+      // Generate token WITH user_type and is_admin
       const token = jwt.sign(
         { 
           id: userId, 
           email,
-          user_type: user_type || 'recipient'
+          user_type: user_type || 'recipient',
+          is_admin: newUser.is_admin || false
         },
         process.env.JWT_SECRET || 'test-secret-123',
         { expiresIn: '7d' }
@@ -65,7 +69,9 @@ const authController = {
           id: userId,
           email,
           full_name,
-          user_type: user_type || 'recipient'
+          user_type: user_type || 'recipient',
+          is_admin: newUser.is_admin || false,
+          admin_role: newUser.admin_role || null
         }
       });
 
@@ -81,14 +87,16 @@ const authController = {
     }
   },
 
-  // ✅ UPDATED: Login with user_type in response
+  // ✅ UPDATED: Login with user_type AND is_admin in response
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
+      console.log('🔐 Login attempt for:', email);
 
       // Find user
       const user = await User.findByEmail(email);
       if (!user) {
+        console.log('❌ User not found:', email);
         return res.status(401).json({
           status: 'error',
           message: 'Invalid credentials'
@@ -98,18 +106,29 @@ const authController = {
       // Check password
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
+        console.log('❌ Invalid password for:', email);
         return res.status(401).json({
           status: 'error',
           message: 'Invalid credentials'
         });
       }
 
-      // ✅ Generate JWT token WITH user_type
+      console.log('✅ Login successful for:', email);
+      console.log('📋 User data:', {
+        id: user.id,
+        email: user.email,
+        user_type: user.user_type,
+        is_admin: user.is_admin,
+        admin_role: user.admin_role
+      });
+
+      // ✅ Generate JWT token WITH user_type and is_admin
       const token = jwt.sign(
         { 
           id: user.id, 
           email: user.email,
-          user_type: user.user_type 
+          user_type: user.user_type,
+          is_admin: user.is_admin || false
         },
         process.env.JWT_SECRET || 'test-secret-123',
         { expiresIn: '7d' }
@@ -123,7 +142,9 @@ const authController = {
           id: user.id,
           email: user.email,
           full_name: user.full_name,
-          user_type: user.user_type
+          user_type: user.user_type,
+          is_admin: user.is_admin || user.user_type === 'admin' || false,
+          admin_role: user.admin_role || null
         }
       });
     } catch (error) {
@@ -135,7 +156,7 @@ const authController = {
     }
   },
 
-  // ✅ NEW: Get current user info
+  // ✅ Get current user info
   getCurrentUser: async (req, res) => {
     try {
       // The user should be attached to req by the protect middleware
@@ -171,10 +192,11 @@ const authController = {
     }
   },
 
-  // Google login/register
+  // ✅ UPDATED: Google login/register with admin support
   googleAuth: async (req, res) => {
     try {
       const { email, name, googleId } = req.body;
+      console.log('🌐 Google auth attempt for:', email);
 
       // Check if user exists by googleId
       let user = await User.findByGoogleId(googleId);
@@ -199,12 +221,22 @@ const authController = {
         }
       }
 
-      // Generate JWT token WITH user_type
+      console.log('✅ Google auth successful for:', email);
+      console.log('📋 User data:', {
+        id: user.id,
+        email: user.email,
+        user_type: user.user_type,
+        is_admin: user.is_admin,
+        admin_role: user.admin_role
+      });
+
+      // Generate JWT token WITH user_type and is_admin
       const token = jwt.sign(
         { 
           id: user.id, 
           email: user.email,
-          user_type: user.user_type 
+          user_type: user.user_type,
+          is_admin: user.is_admin || false
         },
         process.env.JWT_SECRET || 'test-secret-123',
         { expiresIn: '7d' }
@@ -218,7 +250,9 @@ const authController = {
           id: user.id,
           email: user.email,
           full_name: user.full_name,
-          user_type: user.user_type
+          user_type: user.user_type,
+          is_admin: user.is_admin || user.user_type === 'admin' || false,
+          admin_role: user.admin_role || null
         }
       });
     } catch (error) {

@@ -1,8 +1,8 @@
-// src/pages/Login.jsx - UPDATED VERSION with user_type redirect
+// src/pages/Login.jsx - UPDATED with admin redirect
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
+import  {jwtDecode}  from 'jwt-decode';
 
 // Base URL for your backend
 const API_URL = 'http://localhost:5000/api';
@@ -31,64 +31,53 @@ const Login = () => {
     });
   };
 
-  // ✅ UPDATED: Email/Password Login with user_type redirect
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+  // ✅ UPDATED: Email/Password Login with admin redirection
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError('');
 
-    try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
-      });
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: formData.email, password: formData.password })
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (data.status !== 'success') {
-        throw new Error(data.message || 'Login failed');
-      }
+    if (data.status !== 'success') throw new Error(data.message || 'Login failed');
 
-      // ✅ Store token and user data
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('authMethod', 'email');
-      localStorage.setItem('user_type', data.user.user_type);
-      
-      // If remember me is checked
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberedEmail', formData.email);
-      } else {
-        localStorage.removeItem('rememberedEmail');
-      }
+    // Store token and user data
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('authMethod', 'email');
+    localStorage.setItem('user_type', data.user.user_type);
+    localStorage.setItem('isAdmin', Boolean(data.user.is_admin) || data.user.user_type === 'admin' ? 'true' : 'false');
 
-      // ✅ NEW: Redirect based on user_type
-      const userType = data.user.user_type;
-      console.log('User type detected:', userType);
-      
-      if (userType === 'donor' || userType === 'restaurant') {
-        navigate('/post-food');
-      } else {
-        navigate('/claim-food');
-      }
+    const isAdminUser = Boolean(data.user.is_admin) || data.user.user_type === 'admin';
 
-    } catch (error) {
-      console.error('Login error:', error);
-      setError(error.message || 'Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Redirect
+    setTimeout(() => {
+      if (isAdminUser) navigate('/admin');
+      else if (data.user.user_type === 'donor' || data.user.user_type === 'restaurant') navigate('/post-food');
+      else navigate('/claim-food');
+    }, 0);
 
-  // ✅ UPDATED: Google Login with user_type redirect
+  } catch (error) {
+    console.error('Login error:', error);
+    setError(error.message || 'Login failed. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+
+  // ✅ UPDATED: Google Login with admin redirection
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
+      console.log('🌐 Google login attempt');
       // Decode Google token
       const decoded = jwtDecode(credentialResponse.credential);
       
@@ -106,6 +95,7 @@ const Login = () => {
       });
 
       const data = await response.json();
+      console.log('📋 Google login response:', data);
 
       if (data.status !== 'success') {
         throw new Error(data.message || 'Google login failed');
@@ -117,24 +107,41 @@ const Login = () => {
       localStorage.setItem('authMethod', 'google');
       localStorage.setItem('user_type', data.user.user_type);
       
-      // ✅ NEW: Redirect based on user_type
-      const userType = data.user.user_type;
-      console.log('Google user type detected:', userType);
+      // ✅ NEW: Store admin status
+      const isAdminUser = data.user.is_admin || data.user.user_type === 'admin';
+      localStorage.setItem('isAdmin', isAdminUser ? 'true' : 'false');
       
-      if (userType === 'donor' || userType === 'restaurant') {
+      console.log('✅ Google login successful');
+      console.log('👤 User:', data.user);
+      console.log('👑 Is admin?', isAdminUser);
+      
+      // ✅ NEW: Enhanced Redirect Logic
+      const userType = data.user.user_type;
+      
+      console.log('🚦 Redirecting Google user...');
+      console.log('   - userType:', userType);
+      console.log('   - isAdmin:', isAdminUser);
+      
+      // Redirect logic
+      if (isAdminUser) {
+        console.log('🎯 Redirecting to /admin');
+        navigate('/admin');
+      } else if (userType === 'donor' || userType === 'restaurant') {
+        console.log('🎯 Redirecting to /post-food');
         navigate('/post-food');
       } else {
+        console.log('🎯 Redirecting to /claim-food');
         navigate('/claim-food');
       }
 
     } catch (error) {
-      console.error('Google login error:', error);
-      alert('Google login failed. Please try again.');
+      console.error('❌ Google login error:', error);
+      setError('Google login failed. Please try again.');
     }
   };
 
   const handleGoogleError = () => {
-    console.log('Google Login Failed');
+    console.log('❌ Google Login Failed');
     setError('Google login failed. Please try again.');
   };
 
@@ -315,7 +322,7 @@ const Login = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                           </svg>
                           <span>Sign In</span>
-                        </>
+                        </>   
                       )}
                     </span>
                   </button>

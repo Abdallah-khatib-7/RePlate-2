@@ -26,6 +26,8 @@ app.use('/api/food', foodRoutes);
 app.use('/api/contact', contactRoutes);
 // Add this line where you define your routes
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+// In server.js, add this with other route imports:
+app.use('/api/admin', require('./routes/adminRoutes'));
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
