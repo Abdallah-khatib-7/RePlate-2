@@ -4,7 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const { pool } = require('./config/database');
 
-
+const reviewRoutes = require('./routes/reviewRoutes');
 dotenv.config();
 
 const app = express();
@@ -12,6 +12,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/api/reviews', reviewRoutes);
 
 // Routes - Import them
 const authRoutes = require('./routes/authRoutes');

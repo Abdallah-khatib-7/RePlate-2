@@ -19,6 +19,7 @@ import Support from '../pages/Support';
 import Blog from '../pages/Blog';
 import HowItWorks from '../pages/HowItWorks';
 import ForgotPassword from '../pages/ForgotPassword'; 
+import Rate from '../pages/Rate';
 
 const AppRouter = () => {
   return (
@@ -40,6 +41,7 @@ const AppRouter = () => {
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/claim-food" element={<ClaimFood />} />
+        <Route path="/rate" element={<Rate />} />
 
         {/* Protected Routes */}
         <Route path="/dashboard" element={<Dashboard />} />

@@ -27,11 +27,122 @@ const PostFood = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [userType, setUserType] = useState('');
-  const [activeTab, setActiveTab] = useState('listings'); // 'listings' or 'claims'
-
+  const [activeTab, setActiveTab] = useState('listings'); // 'listings' or 'claims
+  // '
+  const [reviews, setReviews] = useState([]);
+    const [restaurantStats, setRestaurantStats] = useState(null);
+    const [showReviews, setShowReviews] = useState(false);
+    const [userInfo, setUserInfo] = useState(null);
   useEffect(() => {
     checkUserTypeAndLoad();
   }, []);
+   
+
+   const fetchRestaurantReviews = async () => {
+  try {
+    const response = await fetch(`${API_URL}/reviews/restaurant/${userInfo.id}`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      setReviews(data.reviews);
+      setRestaurantStats(data.stats);
+    }
+  } catch (error) {
+    console.error('Fetch reviews error:', error);
+  }
+};
+
+// Call this in useEffect or when userInfo loads
+useEffect(() => {
+  if (userInfo) {
+    fetchRestaurantReviews();
+  }
+}, [userInfo]);
+
+// Add this section in your PostFood.jsx render:
+<div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+  <div className="flex justify-between items-center mb-6">
+    <h2 className="text-xl font-bold text-gray-900">⭐ Customer Reviews</h2>
+    <button
+      onClick={() => setShowReviews(!showReviews)}
+      className="text-blue-500 hover:text-blue-700 font-medium"
+    >
+      {showReviews ? 'Hide Reviews' : 'Show Reviews'}
+    </button>
+  </div>
+
+  {restaurantStats && (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="text-center">
+        <div className="text-3xl font-bold text-gray-900">{restaurantStats.average_rating || '0.0'}</div>
+        <div className="text-sm text-gray-500">Average Rating</div>
+      </div>
+      <div className="text-center">
+        <div className="text-3xl font-bold text-gray-900">{restaurantStats.total_reviews || 0}</div>
+        <div className="text-sm text-gray-500">Total Reviews</div>
+      </div>
+      <div className="text-center">
+        <div className="text-3xl font-bold text-gray-900">{restaurantStats.five_stars || 0}</div>
+        <div className="text-sm text-gray-500">5 Star Reviews</div>
+      </div>
+      <div className="text-center">
+        <div className="text-3xl font-bold text-gray-900">
+          {restaurantStats.total_reviews ? 
+            `${Math.round((restaurantStats.five_stars / restaurantStats.total_reviews) * 100)}%` : '0%'}
+        </div>
+        <div className="text-sm text-gray-500">Would Recommend</div>
+      </div>
+    </div>
+  )}
+
+  {showReviews && (
+    <div className="space-y-4">
+      {reviews.length > 0 ? (
+        reviews.map((review) => (
+          <div key={review.id} className="border border-gray-200 rounded-lg p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h4 className="font-bold text-gray-900">{review.food_title}</h4>
+                <div className="flex items-center mt-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-4 h-4 ${
+                        i < review.rating 
+                          ? 'fill-yellow-400 text-yellow-400' 
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <span className="text-sm text-gray-500">{review.review_date}</span>
+            </div>
+            <p className="text-gray-700 mb-2">{review.review_text}</p>
+            {review.suggestions && (
+              <div className="text-sm text-blue-600">
+                <span className="font-medium">Suggestion: </span>
+                {review.suggestions}
+              </div>
+            )}
+            <div className="mt-2 text-sm text-gray-500">
+              From: {review.reviewer_name}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="text-center py-8">
+          <div className="text-4xl mb-3">📝</div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">No reviews yet</h3>
+          <p className="text-gray-600">Reviews will appear here when customers rate your food.</p>
+        </div>
+      )}
+    </div>
+  )}
+</div>
+
+
+
+
 
   // Check user type and load data
   const checkUserTypeAndLoad = async () => {
@@ -55,6 +166,7 @@ const PostFood = () => {
       if (data.status === 'success') {
         const userType = data.user.user_type;
         setUserType(userType);
+        setUserInfo(data.user);
         
         if (userType === 'donor' || userType === 'restaurant') {
           // User is donor/restaurant, proceed

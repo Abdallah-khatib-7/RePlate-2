@@ -137,7 +137,9 @@ const Dashboard = () => {
       console.error('Error fetching stats:', error);
     }
   };
+                 
 
+  
   const handleCancelReservation = async (reservationId, foodId) => {
     if (!window.confirm('Are you sure you want to cancel this reservation?')) {
       return;
@@ -175,6 +177,8 @@ const Dashboard = () => {
       setCancelling(false);
     }
   };
+
+ 
 
   const handleGenerateQRCode = (pickupCode) => {
     setSelectedQRCode(pickupCode);
@@ -588,14 +592,37 @@ const Dashboard = () => {
                         </td>
                         <td className="py-4 px-4">
                           {history.status === 'completed' && !history.reviewed ? (
-                            <button className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors">
-                              Rate
-                            </button>
-                          ) : history.reviewed ? (
-                            <span className="text-yellow-500 text-sm">⭐⭐⭐⭐⭐</span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">N/A</span>
-                          )}
+                              <button
+  type="button"
+  onClick={() =>{
+
+  localStorage.setItem('claimId', history.id);
+  localStorage.setItem('foodId', history.food_id);
+  localStorage.setItem('foodTitle', history.food_title);
+  localStorage.setItem('restaurantName', history.restaurant_name);
+    
+    navigate('/rate', {
+      state: {
+        claimId: history.id,
+        foodId: history.food_id,
+        foodTitle: history.food_title,
+        restaurantName: history.restaurant_name
+      }
+    })
+  }
+}
+  className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
+>
+  Rate
+</button>
+
+
+
+                                      ) : history.reviewed ? (
+                                     <span className="text-yellow-500 text-sm">⭐⭐⭐⭐⭐</span>
+                                     ) : (
+                                   <span className="text-gray-400 text-sm">N/A</span>
+                                       )}
                         </td>
                       </tr>
                     ))}
