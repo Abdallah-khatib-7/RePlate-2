@@ -2,14 +2,14 @@ const { pool } = require('../config/database');
 
 
 const dashboardController = {
-  // Get active reservations for user
+  
   getActiveReservations: async (req, res) => {
     try {
       const userId = req.user.id;
       
       console.log('Fetching active reservations for user:', userId);
       
-      // Get all claims with status 'pending' or 'confirmed'
+      
       const [claims] = await pool.execute(`
         SELECT 
           c.id, c.status, c.claimed_at, c.notes,
@@ -26,7 +26,7 @@ const dashboardController = {
 
       console.log('Active reservations found:', claims.length);
 
-      // Generate pickup codes for display
+      
       const reservations = claims.map(claim => ({
         ...claim,
         pickup_code: `RP-${claim.id.toString().padStart(6, '0')}`,
@@ -46,14 +46,14 @@ const dashboardController = {
     }
   },
 
-  // Get pickup history for user
+  
   getPickupHistory: async (req, res) => {
     try {
       const userId = req.user.id;
       
       console.log('Fetching pickup history for user:', userId);
       
-      // First, let's get completed claims
+      
       const [history] = await pool.execute(`
   SELECT 
     c.id AS claim_id,
@@ -77,7 +77,7 @@ const dashboardController = {
 
       console.log('Pickup history found:', history.length);
 
-      // Format the history with additional info
+      
       const formattedHistory = history.map(item => ({
         ...item,
         amount: item.price,
@@ -103,14 +103,14 @@ const dashboardController = {
     }
   },
 
-  // Get dashboard stats
+  
   getDashboardStats: async (req, res) => {
     try {
       const userId = req.user.id;
       
       console.log('Fetching dashboard stats for user:', userId);
       
-      // Get total spent (sum of all completed claims)
+      
       const [totalSpentResult] = await pool.execute(`
         SELECT SUM(fl.price) as total_spent
         FROM claims c
@@ -120,7 +120,7 @@ const dashboardController = {
 
       const totalSpent = totalSpentResult[0]?.total_spent || 0;
 
-      // Get meals saved (total quantity of completed claims)
+      
       const [mealsSavedResult] = await pool.execute(`
         SELECT SUM(fl.quantity) as meals_saved
         FROM claims c
@@ -130,13 +130,13 @@ const dashboardController = {
 
       const mealsSaved = mealsSavedResult[0]?.meals_saved || 0;
 
-      // Calculate money saved (assuming 35% discount)
+      
       const moneySaved = totalSpent * 0.35;
 
-      // Calculate CO2 saved (approximately 0.5kg per meal)
+      
       const co2Saved = mealsSaved * 0.5;
 
-      // Get active reservations count
+      
       const [activeReservationsResult] = await pool.execute(`
         SELECT COUNT(*) as active_count
         FROM claims
@@ -145,7 +145,7 @@ const dashboardController = {
 
       const activeReservations = activeReservationsResult[0]?.active_count || 0;
 
-      // Get completed pickups count
+      
       const [completedPickupsResult] = await pool.execute(`
         SELECT COUNT(*) as completed_count
         FROM claims
@@ -178,7 +178,7 @@ const dashboardController = {
     }
   },
 
-  // Cancel reservation
+  
   cancelReservation: async (req, res) => {
     try {
       const { reservationId } = req.params;
@@ -187,7 +187,7 @@ const dashboardController = {
 
       console.log('Cancelling reservation:', { reservationId, userId, reason, food_id });
 
-      // Verify the reservation belongs to the user
+      
       const [claim] = await pool.execute(
         'SELECT * FROM claims WHERE id = ? AND recipient_id = ?',
         [reservationId, userId]
@@ -201,13 +201,13 @@ const dashboardController = {
         });
       }
 
-      // Update claim status
+      
       await pool.execute(
         'UPDATE claims SET status = "cancelled" WHERE id = ?',
         [reservationId]
       );
 
-      // Update food listing status back to available
+      
       await pool.execute(
         'UPDATE food_listings SET status = "available" WHERE id = ?',
         [food_id]
@@ -228,7 +228,7 @@ const dashboardController = {
     }
   },
 
-  // Mark claim as completed (pickup completed)
+  
   completePickup: async (req, res) => {
     try {
       const { claimId } = req.params;
@@ -236,7 +236,7 @@ const dashboardController = {
 
       console.log('Completing pickup for claim:', claimId);
 
-      // Verify the claim belongs to the user
+      
       const [claim] = await pool.execute(
         'SELECT * FROM claims WHERE id = ? AND recipient_id = ?',
         [claimId, userId]
@@ -249,7 +249,7 @@ const dashboardController = {
         });
       }
 
-      // Update claim status to completed
+      
       await pool.execute(
         'UPDATE claims SET status = "completed" WHERE id = ?',
         [claimId]
@@ -270,7 +270,7 @@ const dashboardController = {
     }
   },
 
-  // Quick test endpoint
+  
   test: async (req, res) => {
     try {
       console.log('Dashboard test endpoint called');

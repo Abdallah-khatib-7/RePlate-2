@@ -1,8 +1,8 @@
-// backend/controllers/contactController.js
+
 const Contact = require('../models/contactModel');
 
 const contactController = {
-  // Submit contact form
+  
   submitContact: async (req, res) => {
     try {
       const { 
@@ -14,7 +14,7 @@ const contactController = {
         isUrgent: is_urgent 
       } = req.body;
 
-      // Validate required fields
+      
       if (!full_name || !email || !subject || !message) {
         return res.status(400).json({
           status: 'error',
@@ -22,7 +22,7 @@ const contactController = {
         });
       }
 
-      // Email validation
+      
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({
@@ -31,7 +31,7 @@ const contactController = {
         });
       }
 
-      // Create contact message
+      
       const contactId = await Contact.create({
         full_name,
         email,
@@ -54,13 +54,13 @@ const contactController = {
       res.status(500).json({
         status: 'error',
         message: 'Failed to send message. Please try again.',
-        // Remove this in production, for debugging only:
+        
         debug: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   },
 
-  // Get all contact messages (admin only)
+  
   getAllMessages: async (req, res) => {
     try {
       const messages = await Contact.findAll();
@@ -79,7 +79,7 @@ const contactController = {
     }
   },
 
-  // Update message status (admin only)
+  
   updateMessageStatus: async (req, res) => {
     try {
       const { id } = req.params;

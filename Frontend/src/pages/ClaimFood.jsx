@@ -30,7 +30,7 @@ const ClaimFood = () => {
       
       const token = localStorage.getItem('token');
       
-      // Build query parameters
+      
       const params = new URLSearchParams();
       if (filters.city) params.append('city', filters.city);
       if (filters.maxPrice) params.append('price_max', filters.maxPrice);

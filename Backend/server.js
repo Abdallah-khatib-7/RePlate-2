@@ -1,4 +1,3 @@
-// backend/server.js - Add at the top
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -24,11 +23,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/contact', contactRoutes);
-// Add this line where you define your routes
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
-// In server.js, add this with other route imports:
 app.use('/api/admin', require('./routes/adminRoutes'));
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
@@ -45,14 +41,12 @@ app.use((req, res) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 
-// For testing, export app
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
   });
 }
 
-// Test database connection on startup
 pool.getConnection()
   .then(connection => {
     console.log('✅ Database connected successfully');
@@ -62,4 +56,4 @@ pool.getConnection()
     console.error('❌ Database connection failed:', err);
   });
 
-module.exports = app; // ADD THIS LINE
+module.exports = app; 

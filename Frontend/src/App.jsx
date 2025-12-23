@@ -10,7 +10,6 @@ import Rate from './pages/Rate';
 function Layout() {
   const location = useLocation();
 
-  // Routes where navbar should be hidden
   const hideNavbarRoutes = ['/claim-food', '/post-food', '/dashboard', '/rate', '/admin'];
 
   const hideNavbar = hideNavbarRoutes.includes(location.pathname);
@@ -31,7 +30,7 @@ function Layout() {
 function App() {
   useEffect(() => {
     const img = new Image();
-    img.src = '/logo.png'; // optional preload
+    img.src = '/logo.png'; 
   }, []);
 
   return (

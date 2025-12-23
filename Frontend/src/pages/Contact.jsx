@@ -4,7 +4,7 @@ import ChatBot from '../components/ChatBot';
 
 const Contact = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); // Add this state
+  const [isChatOpen, setIsChatOpen] = useState(false); 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,10 +31,8 @@ const Contact = () => {
   setIsSubmitting(true);
   
   try {
-    // Get the urgent checkbox value
     const isUrgent = e.target.querySelector('input[type="checkbox"]').checked;
     
-    // Prepare data for API
     const formDataToSend = {
       name: formData.name,
       email: formData.email,
@@ -44,7 +42,6 @@ const Contact = () => {
       isUrgent: isUrgent
     };
 
-    // Send to backend API
     const response = await fetch('http://localhost:5000/api/contact/submit', {
       method: 'POST',
       headers: {
@@ -70,7 +67,6 @@ const Contact = () => {
   }
 };
 
-  // Update the Live Chat action to open the chatbot
   const contactMethods = [
     {
       icon: '📧',
@@ -91,7 +87,7 @@ const Contact = () => {
       title: 'Live Chat',
       description: 'Get instant help',
       details: 'Start chatting now',
-      action: () => setIsChatOpen(true) // Change to function that opens chat
+      action: () => setIsChatOpen(true) 
     },
     {
       icon: '📍',
@@ -102,12 +98,11 @@ const Contact = () => {
     }
   ];
 
-  // Handle contact method click
   const handleContactMethodClick = (method) => {
     if (typeof method.action === 'function') {
-      method.action(); // Execute the function (opens chat)
+      method.action(); 
     } else if (typeof method.action === 'string') {
-      window.open(method.action, '_blank'); // Open URL
+      window.open(method.action, '_blank'); 
     }
   };
 
@@ -216,7 +211,6 @@ const Contact = () => {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Send us a Message</h2>
               <p className="text-gray-600 mb-8">Fill out the form below and we'll get back to you as soon as possible.</p>
 
-              {/* ... rest of your form code remains the same ... */}
               <form onSubmit={handleSubmit} className="space-y-8">
   {/* Name and Email - Side by Side */}
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -356,24 +350,7 @@ const Contact = () => {
 </form>
             </div>
 
-            {/* Social Links */}
-
-           {/* <div className={`mt-8 text-center transform transition-all duration-500 delay-800 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
-              <p className="text-gray-600 mb-4">Follow us on social media</p>
-              <div className="flex justify-center space-x-6">
-                {['📘', '🐦', '📸', '💼'].map((icon, index) => (
-                  <a
-                    key={index}
-                    href="#"
-                    className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center text-xl hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:scale-110"
-                  >
-                    {icon}
-                  </a>
-                ))}
-              </div>
-            </div> */}
+            
 
           </div>
         </div>

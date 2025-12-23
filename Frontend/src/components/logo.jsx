@@ -1,7 +1,6 @@
-// src/components/Logo.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import logoImage from '../assets/logo.png'; // Correct import from src/assets
+import logoImage from '../assets/logo.png';
 
 export const Logo = ({ className = "w-8 h-8" }) => {
   return (

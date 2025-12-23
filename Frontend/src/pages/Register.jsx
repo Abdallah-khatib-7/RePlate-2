@@ -1,4 +1,3 @@
-// src/pages/Register.jsx - UPDATED VERSION
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -8,9 +7,8 @@ const Register = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [userType, setUserType] = useState('foodLover'); // Default to foodLover
+  const [userType, setUserType] = useState('foodLover'); 
   const [formData, setFormData] = useState({
-    // Personal Information
     firstName: '',
     lastName: '',
     email: '',
@@ -18,13 +16,11 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     
-    // Restaurant Information 
     restaurantName: '',
     restaurantType: '',
     address: '',
     cuisineType: '',
     
-    // Preferences
     newsletter: true,
     terms: false
   });
@@ -42,7 +38,7 @@ const Register = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value
     });
-    setError(''); // Clear error on typing
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -50,14 +46,12 @@ const Register = () => {
     setIsLoading(true);
     setError('');
     
-    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match!');
       setIsLoading(false);
       return;
     }
 
-    // Validate terms acceptance
     if (!formData.terms) {
       setError('Please accept the Terms of Service and Privacy Policy');
       setIsLoading(false);
@@ -65,10 +59,8 @@ const Register = () => {
     }
 
     try {
-      // Prepare data for backend
       const fullName = `${formData.firstName} ${formData.lastName}`;
       
-      // Map frontend user types to database user types
       const dbUserType = userType === 'restaurant' ? 'donor' : 'recipient';
       
       const registrationData = {
@@ -79,12 +71,10 @@ const Register = () => {
         user_type: dbUserType
       };
 
-      // Add address if it's a restaurant
       if (userType === 'restaurant' && formData.address) {
         registrationData.address = formData.address;
       }
 
-      // Send registration request to backend
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
@@ -99,13 +89,11 @@ const Register = () => {
         throw new Error(data.message || 'Registration failed');
       }
 
-      // ✅ Success! Save token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('authMethod', 'email');
       localStorage.setItem('userType', userType);
       
-      // Redirect to dashboard
       navigate('/claim-food');
 
     } catch (error) {

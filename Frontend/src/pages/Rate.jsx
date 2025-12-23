@@ -8,19 +8,15 @@ const Rate = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Debug: Log what we're getting
   console.log('Location state:', location.state);
   console.log('Location state type:', typeof location.state);
   
-  // Parse the data properly
   const parseClaimData = () => {
-    // If location.state exists and has the data
     if (location.state && typeof location.state === 'object') {
       console.log('Using location.state:', location.state);
       return location.state;
     }
     
-    // Try to get from localStorage
     const claimId = localStorage.getItem('claimId');
     const foodId = localStorage.getItem('foodId');
     const foodTitle = localStorage.getItem('foodTitle');
@@ -61,7 +57,6 @@ const Rate = () => {
     hasFoodId: !!foodId
   });
 
-  // Rating messages based on star count
   const ratingMessages = {
     1: {
       title: "We're so sorry! 😔",
@@ -103,7 +98,6 @@ const Rate = () => {
   useEffect(() => {
     console.log('Checking claim data on mount:', { claimId, foodId });
     
-    // If we don't have the data, try to fetch it from localStorage
     if (!claimId || !foodId) {
       const savedClaimId = localStorage.getItem('claimId');
       const savedFoodId = localStorage.getItem('foodId');
@@ -194,7 +188,6 @@ const Rate = () => {
       if (data.status === 'success') {
         setSubmitted(true);
         
-        // Clear localStorage data after successful submission
         localStorage.removeItem('claimId');
         localStorage.removeItem('foodId');
         localStorage.removeItem('foodTitle');

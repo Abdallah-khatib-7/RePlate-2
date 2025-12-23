@@ -1,4 +1,3 @@
-// src/services/chatbotService.js - PERFECT AI VERSION
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 export const chatWithAI = async (message) => {

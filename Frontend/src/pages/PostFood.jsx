@@ -12,7 +12,6 @@ const PostFood = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Form state for new/editing listing
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -27,7 +26,7 @@ const PostFood = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [userType, setUserType] = useState('');
-  const [activeTab, setActiveTab] = useState('listings'); // 'listings' or 'claims
+  const [activeTab, setActiveTab] = useState('listings'); 
   // '
   const [reviews, setReviews] = useState([]);
     const [restaurantStats, setRestaurantStats] = useState(null);
@@ -51,14 +50,12 @@ const PostFood = () => {
   }
 };
 
-// Call this in useEffect or when userInfo loads
 useEffect(() => {
   if (userInfo) {
     fetchRestaurantReviews();
   }
 }, [userInfo]);
 
-// Add this section in your PostFood.jsx render:
 <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
   <div className="flex justify-between items-center mb-6">
     <h2 className="text-xl font-bold text-gray-900">⭐ Customer Reviews</h2>
@@ -144,7 +141,6 @@ useEffect(() => {
 
 
 
-  // Check user type and load data
   const checkUserTypeAndLoad = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -154,7 +150,6 @@ useEffect(() => {
         return;
       }
 
-      // Get user info to check user_type
       const response = await fetch(`${API_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -169,12 +164,10 @@ useEffect(() => {
         setUserInfo(data.user);
         
         if (userType === 'donor' || userType === 'restaurant') {
-          // User is donor/restaurant, proceed
           setIsVisible(true);
           fetchRestaurantListings();
           fetchRestaurantClaims();
         } else {
-          // User is not donor, redirect to claim-food
           alert('This page is for restaurant owners only. Redirecting to food listings...');
           navigate('/claim-food');
         }
@@ -286,7 +279,6 @@ useEffect(() => {
       
       const method = editingId ? 'PUT' : 'POST';
       
-      // Format pickup_time for MySQL (convert to ISO string)
       let formattedPickupTime = formData.pickup_time;
       if (formData.pickup_time) {
         const date = new Date(formData.pickup_time);
@@ -305,7 +297,6 @@ useEffect(() => {
         image_url: formData.image_url || null
       };
       
-      // Don't send expiry_time if not provided
       if (formData.expiry_time) {
         const expiryDate = new Date(formData.expiry_time);
         formattedData.expiry_time = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
@@ -345,7 +336,6 @@ useEffect(() => {
       
       let errorMessage = error.message;
       
-      // Try to extract more specific error message
       if (error.message.includes('Failed to fetch')) {
         errorMessage = 'Cannot connect to server. Please check if the backend is running.';
       } else if (error.message.includes('401') || error.message.includes('Authentication')) {
@@ -364,7 +354,6 @@ useEffect(() => {
   };
 
   const handleEdit = (listing) => {
-    // Format pickup_time for datetime-local input
     let pickupTime = '';
     if (listing.pickup_time) {
       const date = new Date(listing.pickup_time);
@@ -414,7 +403,6 @@ useEffect(() => {
     }
   };
 
-  // Verify claim (mark as completed)
   const verifyClaim = async (claimId, verificationCode = '') => {
     try {
       const token = localStorage.getItem('token');
@@ -434,8 +422,8 @@ useEffect(() => {
       
       if (data.status === 'success') {
         alert('✅ Order marked as completed!');
-        fetchRestaurantClaims(); // Refresh claims
-        fetchRestaurantListings(); // Refresh listings
+        fetchRestaurantClaims(); 
+        fetchRestaurantListings(); 
       } else {
         throw new Error(data.message);
       }
@@ -445,7 +433,6 @@ useEffect(() => {
     }
   };
 
-  // Cancel claim
   const cancelClaim = async (claimId) => {
     if (!window.confirm('Are you sure you want to cancel this claim?')) {
       return;
@@ -467,7 +454,7 @@ useEffect(() => {
       if (data.status === 'success') {
         alert('❌ Claim cancelled');
         fetchRestaurantClaims();
-        fetchRestaurantListings(); // Refresh listings too
+        fetchRestaurantListings(); 
       }
     } catch (error) {
       console.error('Cancel error:', error);
@@ -531,7 +518,6 @@ useEffect(() => {
     }
   };
 
-  // Don't show anything if user type check is still running
   if (!userType && !error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">

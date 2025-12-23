@@ -1,11 +1,11 @@
-// backend/models/contactModel.js
+
 const { pool } = require('../config/database');
 
 class Contact {
   static async create(contactData) {
     let connection;
     try {
-      // Get a connection from the pool
+      
       connection = await pool.getConnection();
       
       const [result] = await connection.execute(
@@ -23,13 +23,13 @@ class Contact {
         ]
       );
       
-      // Release the connection back to the pool
+      
       if (connection) connection.release();
       
       return result.insertId;
       
     } catch (error) {
-      // Always release connection on error
+      
       if (connection) connection.release();
       console.error('Contact model error details:', error.message);
       console.error('Error stack:', error.stack);

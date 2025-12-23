@@ -1,10 +1,8 @@
-// src/pages/Login.jsx - UPDATED with admin redirect
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import  {jwtDecode}  from 'jwt-decode';
 
-// Base URL for your backend
 const API_URL = 'http://localhost:5000/api';
 
 const Login = () => {
@@ -31,7 +29,6 @@ const Login = () => {
     });
   };
 
-  // ✅ UPDATED: Email/Password Login with admin redirection
 const handleSubmit = async (e) => {
   e.preventDefault();
   setIsLoading(true);
@@ -48,7 +45,6 @@ const handleSubmit = async (e) => {
 
     if (data.status !== 'success') throw new Error(data.message || 'Login failed');
 
-    // Store token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     localStorage.setItem('authMethod', 'email');
@@ -57,7 +53,6 @@ const handleSubmit = async (e) => {
 
     const isAdminUser = Boolean(data.user.is_admin) || data.user.user_type === 'admin';
 
-    // Redirect
     setTimeout(() => {
       if (isAdminUser) navigate('/admin');
       else if (data.user.user_type === 'donor' || data.user.user_type === 'restaurant') navigate('/post-food');
@@ -74,14 +69,11 @@ const handleSubmit = async (e) => {
 
 
 
-  // ✅ UPDATED: Google Login with admin redirection
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       console.log('🌐 Google login attempt');
-      // Decode Google token
       const decoded = jwtDecode(credentialResponse.credential);
       
-      // Send to your backend
       const response = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: {
@@ -101,13 +93,11 @@ const handleSubmit = async (e) => {
         throw new Error(data.message || 'Google login failed');
       }
 
-      // ✅ Store token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('authMethod', 'google');
       localStorage.setItem('user_type', data.user.user_type);
       
-      // ✅ NEW: Store admin status
       const isAdminUser = data.user.is_admin || data.user.user_type === 'admin';
       localStorage.setItem('isAdmin', isAdminUser ? 'true' : 'false');
       
@@ -115,14 +105,12 @@ const handleSubmit = async (e) => {
       console.log('👤 User:', data.user);
       console.log('👑 Is admin?', isAdminUser);
       
-      // ✅ NEW: Enhanced Redirect Logic
       const userType = data.user.user_type;
       
       console.log('🚦 Redirecting Google user...');
       console.log('   - userType:', userType);
       console.log('   - isAdmin:', isAdminUser);
       
-      // Redirect logic
       if (isAdminUser) {
         console.log('🎯 Redirecting to /admin');
         navigate('/admin');

@@ -22,12 +22,7 @@ const NotFound = () => {
     };
   }, []);
 
-  /*const quickLinks = [
-    { path: '/', label: 'Home', icon: '🏠' },
-    { path: '/claim-food', label: 'Find Food', icon: '🔍' },
-    { path: '/login', label: 'Login', icon: '🔐' },
-    { path: '/register', label: 'Sign Up', icon: '👤' }
-  ]; */
+  
 
   const funFacts = [
     "Every year, 1.3 billion tons of food is wasted globally",
@@ -96,50 +91,9 @@ const NotFound = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
+         
 
-        {/* <div className={`flex flex-col sm:flex-row gap-4 justify-center mb-8 transform transition-all duration-500 delay-500 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}>
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center justify-center space-x-3 bg-gray-100 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200 transform hover:scale-105"
-            >
-              <span>↩️</span>
-              <span>Go Back</span>
-            </button>
-            <Link
-              to="/"
-              className="flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-            >
-              <span>🏠</span>
-              <span>Go Home</span>
-            </Link>
-          </div> */}
-
-          {/* Quick Links */}
           
-          {/* <div className={`transform transition-all duration-500 delay-600 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}>
-
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">Quick Navigation</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {quickLinks.map((link, index) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`flex items-center justify-center space-x-2 p-3 bg-white border border-gray-200 rounded-lg hover:border-green-300 hover:shadow-md transition-all duration-200 transform hover:scale-105 ${
-                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                  }`}
-                  style={{ transitionDelay: `${700 + index * 100}ms` }}
-                >
-                  <span>{link.icon}</span>
-                  <span className="text-sm font-medium text-gray-700">{link.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div> */}
         </div> 
 
         {/* Floating Food Elements */}

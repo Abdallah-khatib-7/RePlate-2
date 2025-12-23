@@ -3,7 +3,7 @@ const router = express.Router();
 const { pool } = require('../config/database');
 const { protect } = require('../middleware/authMiddleware');
 
-// Submit a review
+
 router.post('/submit', protect, async (req, res) => {
   try {
     const { claim_id, food_id, rating, review_text, category_feedback, suggestions, anonymous } = req.body;
@@ -13,7 +13,7 @@ router.post('/submit', protect, async (req, res) => {
       claim_id, food_id, rating, review_text, category_feedback, suggestions, anonymous
     });
 
-    // Safe defaults for nullable fields - convert undefined to null
+    
     const safeReviewText = review_text === undefined ? null : (review_text || null);
     const safeCategory = category_feedback === undefined ? null : (category_feedback || null);
     const safeSuggestions = suggestions === undefined ? null : (suggestions || null);
@@ -23,7 +23,7 @@ router.post('/submit', protect, async (req, res) => {
       safeReviewText, safeCategory, safeSuggestions, safeAnonymous
     });
 
-    // Validate required fields
+    
     if (!claim_id || !food_id || !rating) {
       return res.status(400).json({ 
         status: 'error', 
@@ -31,7 +31,7 @@ router.post('/submit', protect, async (req, res) => {
       });
     }
 
-    // Validate rating range
+    
     if (rating < 1 || rating > 5) {
       return res.status(400).json({ 
         status: 'error', 
@@ -39,7 +39,7 @@ router.post('/submit', protect, async (req, res) => {
       });
     }
 
-    // Get restaurant_id from food listing
+    
     const [food] = await pool.execute(
       'SELECT donor_id FROM food_listings WHERE id = ?',
       [food_id]
@@ -52,7 +52,7 @@ router.post('/submit', protect, async (req, res) => {
     const restaurant_id = food[0].donor_id;
     console.log('Restaurant ID:', restaurant_id);
 
-    // Check if review already exists
+    
     const [existing] = await pool.execute(
       'SELECT id FROM food_reviews WHERE claim_id = ?',
       [claim_id]
@@ -62,7 +62,7 @@ router.post('/submit', protect, async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Review already submitted for this claim' });
     }
 
-    // Insert review with explicit null for undefined values
+    
     const [result] = await pool.execute(
       `INSERT INTO food_reviews 
        (claim_id, recipient_id, food_id, restaurant_id, rating, review_text, category_feedback, suggestions, anonymous)
@@ -73,19 +73,19 @@ router.post('/submit', protect, async (req, res) => {
         food_id,
         restaurant_id,
         rating,
-        safeReviewText,  // This will be null if undefined
-        safeCategory,    // This will be null if undefined
-        safeSuggestions, // This will be null if undefined
+        safeReviewText,  
+        safeCategory,    
+        safeSuggestions, 
         safeAnonymous
       ]
     );
 
     console.log('Review inserted successfully, ID:', result.insertId);
 
-    // Update restaurant stats
+    
     await updateRestaurantStats(restaurant_id);
 
-    // Update claim to mark as reviewed
+    
     try {
       await pool.execute(
         `UPDATE claims 
@@ -113,7 +113,7 @@ router.post('/submit', protect, async (req, res) => {
   }
 });
 
-// Get reviews for a restaurant
+
 router.get('/restaurant/:restaurantId', async (req, res) => {
   try {
     const { restaurantId } = req.params;
@@ -133,7 +133,7 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
       [restaurantId]
     );
 
-    // Get restaurant stats
+    
     const [stats] = await pool.execute(
       'SELECT * FROM restaurant_stats WHERE restaurant_id = ?',
       [restaurantId]
@@ -150,7 +150,7 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
   }
 });
 
-// Get user's reviews
+
 router.get('/my-reviews', protect, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -175,7 +175,7 @@ router.get('/my-reviews', protect, async (req, res) => {
   }
 });
 
-// Helper function to update restaurant stats
+
 async function updateRestaurantStats(restaurantId) {
   try {
     const [stats] = await pool.execute(
@@ -195,7 +195,7 @@ async function updateRestaurantStats(restaurantId) {
     if (stats.length > 0) {
       const stat = stats[0];
       
-      // Insert or update restaurant stats
+      
       await pool.execute(
         `INSERT INTO restaurant_stats 
          (restaurant_id, total_reviews, average_rating, one_star, two_stars, three_stars, four_stars, five_stars)

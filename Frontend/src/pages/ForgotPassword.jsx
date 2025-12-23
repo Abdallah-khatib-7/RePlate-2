@@ -30,15 +30,12 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // For demo purposes - always succeed
       console.log('Password reset requested for:', email);
       
       setIsSubmitted(true);
       
-      // Reset form after 5 seconds
       setTimeout(() => {
         setEmail('');
         setIsSubmitted(false);
@@ -129,7 +126,6 @@ const ForgotPassword = () => {
               </div>
             </div>
           ) : (
-            /* Reset Form */
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">

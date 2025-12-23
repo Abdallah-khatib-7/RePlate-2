@@ -3,25 +3,25 @@ const router = express.Router();
 const { pool } = require('../config/database');
 const { protect, isAdmin } = require('../middleware/authMiddleware');
 
-// All routes require admin authentication
+
 router.use(protect, isAdmin);
 
-// Get dashboard statistics
+
 router.get('/stats', async (req, res) => {
   try {
-    // Get total users
+    
     const [users] = await pool.execute('SELECT COUNT(*) as total FROM users');
     const [donors] = await pool.execute('SELECT COUNT(*) as total FROM users WHERE user_type = "donor"');
     const [recipients] = await pool.execute('SELECT COUNT(*) as total FROM users WHERE user_type = "recipient"');
     
-    // Get food listings
+    
     const [foodListings] = await pool.execute('SELECT COUNT(*) as total FROM food_listings');
     
-    // Get claims
+    
     const [claims] = await pool.execute('SELECT COUNT(*) as total FROM claims');
     const [completedClaims] = await pool.execute('SELECT COUNT(*) as total FROM claims WHERE status = "completed"');
     
-    // Get revenue (sum of all food prices that were claimed)
+    
     const [revenue] = await pool.execute(`
       SELECT SUM(fl.price) as total 
       FROM claims c 
@@ -29,9 +29,9 @@ router.get('/stats', async (req, res) => {
       WHERE c.status = "completed"
     `);
     
-    // Environmental impact (estimated)
-    const foodSaved = completedClaims[0].total * 2.5; // 2.5kg per claim
-    const co2Saved = completedClaims[0].total * 1.2; // 1.2kg CO2 per claim
+    
+    const foodSaved = completedClaims[0].total * 2.5; 
+    const co2Saved = completedClaims[0].total * 1.2; 
 
     res.status(200).json({
       status: 'success',
@@ -53,7 +53,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Get all users
+
 router.get('/users', async (req, res) => {
   try {
     const [users] = await pool.execute(`
@@ -73,12 +73,12 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Delete user
+
 router.delete('/users/:id', async (req, res) => {
   try {
     const userId = req.params.id;
     
-    // Prevent deleting yourself
+    
     if (parseInt(userId) === req.user.id) {
       return res.status(400).json({ 
         status: 'error', 
@@ -98,14 +98,14 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
-// Toggle user status
+
 router.put('/users/:id/toggle-status', async (req, res) => {
   try {
     const userId = req.params.id;
     const { status } = req.body;
     
-    // In a real implementation, you might have a status column
-    // For now, we'll just update a hypothetical status field
+    
+    
     await pool.execute(
       'UPDATE users SET status = ? WHERE id = ?',
       [status, userId]
@@ -121,7 +121,7 @@ router.put('/users/:id/toggle-status', async (req, res) => {
   }
 });
 
-// Get all food listings
+
 router.get('/food-listings', async (req, res) => {
   try {
     const [listings] = await pool.execute(`
@@ -141,7 +141,7 @@ router.get('/food-listings', async (req, res) => {
   }
 });
 
-// Delete food listing
+
 router.delete('/food-listings/:id', async (req, res) => {
   try {
     const foodId = req.params.id;
@@ -158,7 +158,7 @@ router.delete('/food-listings/:id', async (req, res) => {
   }
 });
 
-// Get all claims
+
 router.get('/claims', async (req, res) => {
   try {
     const [claims] = await pool.execute(`
@@ -182,7 +182,7 @@ router.get('/claims', async (req, res) => {
   }
 });
 
-// Update claim status
+
 router.put('/claims/:id/status', async (req, res) => {
   try {
     const claimId = req.params.id;
@@ -203,7 +203,7 @@ router.put('/claims/:id/status', async (req, res) => {
   }
 });
 
-// Get all reviews
+
 router.get('/reviews', async (req, res) => {
   try {
     const [reviews] = await pool.execute(`
@@ -230,7 +230,7 @@ router.get('/reviews', async (req, res) => {
   }
 });
 
-// Delete review
+
 router.delete('/reviews/:id', async (req, res) => {
   try {
     const reviewId = req.params.id;

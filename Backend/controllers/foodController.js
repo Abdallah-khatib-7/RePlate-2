@@ -1,7 +1,7 @@
 const { pool } = require('../config/database');
 
 const foodController = {
-  // Get food listings (with status filter)
+  
   getAvailableListings: async (req, res) => {
     try {
       const { city, type, sort = 'newest', price_min, price_max, status = 'available' } = req.query;
@@ -15,29 +15,29 @@ const foodController = {
       `;
       const params = [];
       
-      // Apply status filter
+      
       if (status === 'available') {
         query += " AND f.status = 'available'";
       } else if (status === 'all') {
-        // Show all statuses
+        
       } else {
         query += ' AND f.status = ?';
         params.push(status);
       }
       
-      // Apply city filter if provided
+      
       if (city) {
         query += ' AND f.city = ?';
         params.push(city);
       }
       
-      // Apply type filter if provided
+      
       if (type) {
         query += ' AND f.type = ?';
         params.push(type);
       }
       
-      // Apply price filters if provided
+      
       if (price_min) {
         query += ' AND f.price >= ?';
         params.push(parseFloat(price_min));
@@ -48,7 +48,7 @@ const foodController = {
         params.push(parseFloat(price_max));
       }
       
-      // Apply sorting
+      
       if (sort === 'newest') {
         query += ' ORDER BY f.created_at DESC';
       } else if (sort === 'oldest') {
@@ -60,7 +60,7 @@ const foodController = {
       } else if (sort === 'quantity_high') {
         query += ' ORDER BY f.quantity DESC';
       } else {
-        query += ' ORDER BY f.created_at DESC'; // Default sorting
+        query += ' ORDER BY f.created_at DESC'; 
       }
       
       const [listings] = await pool.execute(query, params);
@@ -80,12 +80,12 @@ const foodController = {
     }
   },
 
-  // Get all claims for a restaurant's listings
+  
   getRestaurantClaims: async (req, res) => {
     try {
       const userId = req.user.id;
       
-      // Get all food listings by this restaurant
+      
       const [listings] = await pool.execute(
         'SELECT id FROM food_listings WHERE donor_id = ?',
         [userId]
@@ -129,7 +129,7 @@ const [claims] = await pool.execute(`
 `, listingIds);
 
       
-      // Generate confirmation codes if not present
+      
       for (let claim of claims) {
         if (!claim.confirmation_code) {
           const code = generateConfirmationCode();
@@ -155,7 +155,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Get single listing by ID
+  
   getListingById: async (req, res) => {
     try {
       const { id } = req.params;
@@ -191,7 +191,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Create new listing
+  
   createListing: async (req, res) => {
     try {
       console.log('=== CREATE LISTING REQUEST ===');
@@ -210,7 +210,7 @@ const [claims] = await pool.execute(`
         image_url
       } = req.body;
       
-      // Validate required fields
+      
       const requiredFields = ['title', 'quantity', 'pickup_time', 'address', 'city', 'price'];
       console.log('Checking required fields:', requiredFields);
       
@@ -224,7 +224,7 @@ const [claims] = await pool.execute(`
         }
       }
       
-      // Validate user is authenticated
+      
       if (!req.user || !req.user.id) {
         console.log('No user authentication');
         return res.status(401).json({
@@ -260,7 +260,7 @@ const [claims] = await pool.execute(`
       const [result] = await pool.execute(query, params);
       console.log('Insert result:', result);
       
-      // Get the newly created listing
+      
       const [newListing] = await pool.execute(
         'SELECT * FROM food_listings WHERE id = ?',
         [result.insertId]
@@ -290,7 +290,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Update listing
+  
   updateListing: async (req, res) => {
     try {
       const { id } = req.params;
@@ -301,7 +301,7 @@ const [claims] = await pool.execute(`
       console.log('User ID:', req.user ? req.user.id : 'No user');
       console.log('Updates:', updates);
       
-      // Check if listing exists
+      
       const [existing] = await pool.execute(
         'SELECT * FROM food_listings WHERE id = ?',
         [id]
@@ -322,7 +322,7 @@ const [claims] = await pool.execute(`
       console.log('Request user id:', req.user.id);
       console.log('Are they equal?', listing.donor_id === req.user.id);
       
-      // Check if user owns the listing
+      
       if (listing.donor_id !== req.user.id) {
         console.log('User does not own this listing');
         return res.status(403).json({
@@ -333,12 +333,12 @@ const [claims] = await pool.execute(`
       
       console.log('User authorized, proceeding with update...');
       
-      // Don't allow updating certain fields
+      
       delete updates.id;
       delete updates.donor_id;
       delete updates.created_at;
       
-      // Build dynamic update query
+      
       const updateFields = [];
       const params = [];
       
@@ -346,7 +346,7 @@ const [claims] = await pool.execute(`
         if (value !== undefined && value !== null) {
           updateFields.push(`${key} = ?`);
           
-          // Handle special field types
+          
           if (key === 'quantity') {
             params.push(parseInt(value) || 1);
           } else if (key === 'price') {
@@ -378,7 +378,7 @@ const [claims] = await pool.execute(`
       
       await pool.execute(query, params);
       
-      // Get updated listing
+      
       const [updated] = await pool.execute(
         'SELECT * FROM food_listings WHERE id = ?',
         [id]
@@ -401,7 +401,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Get restaurant's own listings (for PostFood page)
+  
   getMyListings: async (req, res) => {
     try {
       if (!req.user || !req.user.id) {
@@ -421,7 +421,7 @@ const [claims] = await pool.execute(`
       
       const [listings] = await pool.execute(query, [req.user.id]);
       
-      // Format the listings for frontend
+      
       const formattedListings = listings.map(listing => ({
         id: listing.id,
         title: listing.title,
@@ -451,13 +451,13 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Claim food with confirmation code
+  
   claimFood: async (req, res) => {
     try {
       const { foodId } = req.params;
       const { notes } = req.body;
       
-      // Validate user is authenticated
+      
       if (!req.user || !req.user.id) {
         return res.status(401).json({
           status: 'error',
@@ -465,7 +465,7 @@ const [claims] = await pool.execute(`
         });
       }
       
-      // Check if food exists and is available
+      
       const [foodRows] = await pool.execute(
         'SELECT * FROM food_listings WHERE id = ?',
         [foodId]
@@ -487,7 +487,7 @@ const [claims] = await pool.execute(`
         });
       }
       
-      // Check if user has already claimed
+      
       const [existingClaims] = await pool.execute(
         'SELECT * FROM claims WHERE food_id = ? AND recipient_id = ?',
         [foodId, req.user.id]
@@ -500,10 +500,10 @@ const [claims] = await pool.execute(`
         });
       }
       
-      // Generate confirmation code
+      
       const confirmationCode = generateConfirmationCode();
       
-      // Create claim with confirmation code
+      
       const claimQuery = `
         INSERT INTO claims (food_id, recipient_id, notes, status, confirmation_code, claimed_at)
         VALUES (?, ?, ?, 'pending', ?, NOW())
@@ -516,7 +516,7 @@ const [claims] = await pool.execute(`
         confirmationCode
       ]);
       
-      // Update food status to reserved
+      
       await pool.execute(
         'UPDATE food_listings SET status = ? WHERE id = ?',
         ['reserved', foodId]
@@ -538,7 +538,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Delete listing
+  
   deleteListing: async (req, res) => {
     try {
       const { id } = req.params;
@@ -547,7 +547,7 @@ const [claims] = await pool.execute(`
       console.log('Listing ID:', id);
       console.log('User ID:', req.user ? req.user.id : 'No user');
       
-      // Check if listing exists
+      
       const [listingRows] = await pool.execute(
         'SELECT * FROM food_listings WHERE id = ?',
         [id]
@@ -568,7 +568,7 @@ const [claims] = await pool.execute(`
       console.log('Request user id:', req.user.id);
       console.log('Are they equal?', listing.donor_id === req.user.id);
       
-      // Check if user owns the listing
+      
       if (listing.donor_id !== req.user.id) {
         console.log('User does not own this listing');
         return res.status(403).json({
@@ -579,10 +579,10 @@ const [claims] = await pool.execute(`
       
       console.log('User authorized, deleting...');
       
-      // Delete related claims first (if any)
+      
       await pool.execute('DELETE FROM claims WHERE food_id = ?', [id]);
       
-      // Delete the listing
+      
       await pool.execute('DELETE FROM food_listings WHERE id = ?', [id]);
       
       console.log('Listing deleted successfully');
@@ -601,7 +601,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Get user's listings (similar to getMyListings but with different data)
+  
   getUserListings: async (req, res) => {
     try {
       if (!req.user || !req.user.id) {
@@ -624,7 +624,7 @@ const [claims] = await pool.execute(`
       
       const [listings] = await pool.execute(query, [req.user.id]);
       
-      // Parse claim statuses
+      
       listings.forEach(listing => {
         if (listing.claim_statuses) {
           listing.claim_statuses = listing.claim_statuses.split(',');
@@ -646,7 +646,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Get claimed foods by user
+  
   getUserClaims: async (req, res) => {
     try {
       if (!req.user || !req.user.id) {
@@ -684,7 +684,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Update claim status (verify/complete)
+  
   updateClaimStatus: async (req, res) => {
     try {
       const { claimId } = req.params;
@@ -697,7 +697,7 @@ const [claims] = await pool.execute(`
       console.log('Verification Code:', verification_code);
       console.log('User ID:', userId);
       
-      // Verify the restaurant owns this food listing
+      
       const [claimCheck] = await pool.execute(`
         SELECT f.donor_id, f.id as food_id 
         FROM claims c
@@ -723,7 +723,7 @@ const [claims] = await pool.execute(`
         });
       }
       
-      // If verifying with code
+      
       if (verification_code) {
         const [codeCheck] = await pool.execute(
           'SELECT confirmation_code FROM claims WHERE id = ?',
@@ -741,19 +741,19 @@ const [claims] = await pool.execute(`
         }
       }
       
-      // Update claim status
+      
       let updateQuery = 'UPDATE claims SET status = ?';
       const params = [status];
       
       if (status === 'completed') {
         updateQuery += ', verified_at = NOW()';
-        // Also update food listing status to claimed
+        
         await pool.execute(
           'UPDATE food_listings SET status = ? WHERE id = ?',
           ['claimed', claimCheck[0].food_id]
         );
       } else if (status === 'cancelled') {
-        // Reset food listing status to available
+        
         await pool.execute(
           'UPDATE food_listings SET status = ? WHERE id = ?',
           ['available', claimCheck[0].food_id]
@@ -782,10 +782,10 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Reset food status (for testing/development)
+  
   resetFoodStatus: async (req, res) => {
     try {
-      // Only allow in development
+      
       if (process.env.NODE_ENV !== 'development') {
         return res.status(403).json({
           status: 'error',
@@ -793,12 +793,12 @@ const [claims] = await pool.execute(`
         });
       }
       
-      // Reset all food listings to available
+      
       await pool.execute(
         "UPDATE food_listings SET status = 'available' WHERE status IN ('reserved', 'claimed')"
       );
       
-      // Clear all claims
+      
       await pool.execute('DELETE FROM claims');
       
       res.json({
@@ -815,7 +815,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Check user type
+  
   checkUserType: async (req, res) => {
     try {
       if (!req.user || !req.user.id) {
@@ -856,7 +856,7 @@ const [claims] = await pool.execute(`
     }
   },
 
-  // Debug: Get current user info and listings
+  
   debugInfo: async (req, res) => {
     try {
       console.log('=== DEBUG INFO REQUEST ===');
@@ -869,7 +869,7 @@ const [claims] = await pool.execute(`
         });
       }
       
-      // Get user details
+      
       const [userRows] = await pool.execute(
         'SELECT id, email, full_name, user_type FROM users WHERE id = ?',
         [req.user.id]
@@ -884,13 +884,13 @@ const [claims] = await pool.execute(`
       
       const user = userRows[0];
       
-      // Get user's listings
+      
       const [listings] = await pool.execute(
         'SELECT id, title, donor_id, status FROM food_listings WHERE donor_id = ?',
         [req.user.id]
       );
       
-      // Get user's claims (as donor)
+      
       const listingIds = listings.map(l => l.id);
 
 if (listingIds.length === 0) {
@@ -949,7 +949,7 @@ const [claims] = await pool.execute(`
   
 };
 
-// Helper function to generate confirmation code
+
 function generateConfirmationCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';

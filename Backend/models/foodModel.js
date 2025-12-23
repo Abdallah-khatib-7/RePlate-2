@@ -71,12 +71,12 @@ class Food {
     );
   }
 
-  // NEW METHOD: Update listing with multiple fields
+  
   static async update(id, donorId, updateData) {
     const fields = [];
     const values = [];
     
-    // Build dynamic query based on provided fields
+    
     if (updateData.title !== undefined) {
       fields.push('title = ?');
       values.push(updateData.title);
@@ -119,13 +119,13 @@ class Food {
     }
     
     if (fields.length === 0) {
-      return 0; // No fields to update
+      return 0; 
     }
     
-    // Add updated_at timestamp
+    
     fields.push('updated_at = CURRENT_TIMESTAMP');
     
-    // Add id and donorId for WHERE clause
+    
     values.push(id, donorId);
     
     const [result] = await pool.execute(
@@ -136,7 +136,7 @@ class Food {
     return result.affectedRows;
   }
 
-  // NEW METHOD: Get all available listings with filters
+  
   static async getAllListings(filters = {}) {
     let query = `
       SELECT f.*, u.full_name as donor_name 
@@ -146,7 +146,7 @@ class Food {
     `;
     const params = [];
 
-    // Apply filters
+    
     if (filters.city) {
       query += ' AND f.city = ?';
       params.push(filters.city);
@@ -163,11 +163,11 @@ class Food {
         params.push(filters.status);
       }
     } else {
-      // Default to available if no status filter
+      
       query += ' AND f.status = "available"';
     }
 
-    // Apply sorting
+    
     if (filters.sort) {
       switch (filters.sort) {
         case 'oldest':
@@ -195,7 +195,7 @@ class Food {
     return rows;
   }
 
-  // NEW METHOD: Check if listing belongs to donor
+  
   static async isOwner(listingId, donorId) {
     const [rows] = await pool.execute(
       'SELECT id FROM food_listings WHERE id = ? AND donor_id = ?',
@@ -204,7 +204,7 @@ class Food {
     return rows.length > 0;
   }
 
-  // NEW METHOD: Get listing with donor info
+  
   static async getListingWithDonor(id) {
     const [rows] = await pool.execute(
       `SELECT f.*, u.full_name as donor_name, u.email as donor_email, u.phone as donor_phone

@@ -16,10 +16,10 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // Verify token
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret-123');
     
-    // Get user from database WITH admin fields
+    
     const [users] = await pool.execute(
       'SELECT id, email, full_name, user_type, is_admin, admin_role FROM users WHERE id = ?',
       [decoded.id]
@@ -43,7 +43,7 @@ const protect = async (req, res, next) => {
   }
 };
 
-// ✅ NEW: Admin middleware
+
 const isAdmin = (req, res, next) => {
   if (req.user.user_type !== 'admin' && !req.user.is_admin) {
     return res.status(403).json({

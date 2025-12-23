@@ -7,7 +7,7 @@ const API_URL = 'http://localhost:5000/api';
 const Dashboard = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [ setError] = useState(''); // Fixed: Added error variable
+  const [ setError] = useState(''); 
   const [userInfo, setUserInfo] = useState(null);
   const [activeReservations, setActiveReservations] = useState([]);
   const [pickupHistory, setPickupHistory] = useState([]);
@@ -52,13 +52,12 @@ const Dashboard = () => {
         return;
       }
 
-      // Fetch all dashboard data
       await Promise.all([
         fetchUserInfo(),
         fetchActiveReservations(),
         fetchPickupHistory(),
         fetchDashboardStats(),
-        fetchMyClaims() // Added: Fetch user's claims
+        fetchMyClaims() 
       ]);
 
       setIsVisible(true);
@@ -96,7 +95,6 @@ const Dashboard = () => {
       const data = await response.json();
       if (data.status === 'success') {
         setActiveReservations(data.reservations || []);
-        // Set current order as the most recent active reservation
         if (data.reservations && data.reservations.length > 0) {
           setCurrentOrder(data.reservations[0]);
         }
@@ -163,10 +161,10 @@ const Dashboard = () => {
       const data = await response.json();
       if (data.status === 'success') {
         alert('Reservation cancelled successfully');
-        // Refresh data
+        
         fetchActiveReservations();
         fetchDashboardStats();
-        fetchMyClaims(); // Refresh claims after cancellation
+        fetchMyClaims(); 
       } else {
         throw new Error(data.message || 'Failed to cancel reservation');
       }
@@ -610,8 +608,8 @@ const Dashboard = () => {
 
     navigate('/rate', {
   state: {
-    claimId: history.claim_id,   // ✅ REAL claims.id
-    foodId: history.food_id,     // ✅ correct
+    claimId: history.claim_id,   
+    foodId: history.food_id,     
     foodTitle: history.food_title,
     restaurantName: history.restaurant_name
   }

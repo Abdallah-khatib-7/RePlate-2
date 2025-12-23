@@ -1,10 +1,10 @@
-// backend/controllers/authController.js - UPDATED VERSION with admin support
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 
 const authController = {
-  // Register new user - SIMPLIFIED
+  
   register: async (req, res) => {
     console.log('=== REGISTRATION START ===');
     
@@ -12,7 +12,7 @@ const authController = {
       const { email, password, full_name, phone, address, user_type } = req.body;
       console.log('📦 Request data:', { email, full_name, user_type });
 
-      // Basic validation
+      
       if (!email || !password || !full_name) {
         return res.status(400).json({
           status: 'error',
@@ -20,7 +20,7 @@ const authController = {
         });
       }
 
-      // Check if user exists
+      
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
         return res.status(400).json({
@@ -29,10 +29,10 @@ const authController = {
         });
       }
 
-      // Hash password
+      
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
+      
       const userId = await User.create({
         email,
         password: hashedPassword,
@@ -44,10 +44,10 @@ const authController = {
 
       console.log('✅ User created with ID:', userId);
 
-      // Get the full user data including is_admin
+      
       const newUser = await User.findByEmail(email);
       
-      // Generate token WITH user_type and is_admin
+      
       const token = jwt.sign(
         { 
           id: userId, 
@@ -87,13 +87,13 @@ const authController = {
     }
   },
 
-  // ✅ UPDATED: Login with user_type AND is_admin in response
+  
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
       console.log('🔐 Login attempt for:', email);
 
-      // Find user
+      
       const user = await User.findByEmail(email);
       if (!user) {
         console.log('❌ User not found:', email);
@@ -103,7 +103,7 @@ const authController = {
         });
       }
 
-      // Check password
+      
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         console.log('❌ Invalid password for:', email);
@@ -122,7 +122,7 @@ const authController = {
         admin_role: user.admin_role
       });
 
-      // ✅ Generate JWT token WITH user_type and is_admin
+      
       const token = jwt.sign(
         { 
           id: user.id, 
@@ -156,10 +156,10 @@ const authController = {
     }
   },
 
-  // ✅ Get current user info
+  
   getCurrentUser: async (req, res) => {
     try {
-      // The user should be attached to req by the protect middleware
+      
       if (!req.user || !req.user.id) {
         return res.status(401).json({
           status: 'error',
@@ -167,7 +167,7 @@ const authController = {
         });
       }
 
-      // Find user by ID
+      
       const user = await User.findById(req.user.id);
       if (!user) {
         return res.status(404).json({
@@ -176,7 +176,7 @@ const authController = {
         });
       }
 
-      // Return user info (excluding password)
+      
       const { password, ...userWithoutPassword } = user;
       
       res.json({
@@ -192,24 +192,24 @@ const authController = {
     }
   },
 
-  // ✅ UPDATED: Google login/register with admin support
+  
   googleAuth: async (req, res) => {
     try {
       const { email, name, googleId } = req.body;
       console.log('🌐 Google auth attempt for:', email);
 
-      // Check if user exists by googleId
+      
       let user = await User.findByGoogleId(googleId);
 
       if (!user) {
-        // Check if user exists by email
+        
         user = await User.findByEmail(email);
         
         if (user) {
-          // Update existing user with googleId
+          
           await User.updateProfile(user.id, { google_id: googleId });
         } else {
-          // Create new user
+          
           const userId = await User.create({
             email,
             full_name: name,
@@ -230,7 +230,7 @@ const authController = {
         admin_role: user.admin_role
       });
 
-      // Generate JWT token WITH user_type and is_admin
+      
       const token = jwt.sign(
         { 
           id: user.id, 
@@ -264,7 +264,7 @@ const authController = {
     }
   },
 
-  // Forgot password
+  
   forgotPassword: async (req, res) => {
     try {
       const { email } = req.body;
@@ -277,20 +277,20 @@ const authController = {
         });
       }
 
-      // Generate reset token
+      
       const resetToken = jwt.sign(
         { id: user.id },
         process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
 
-      // In a real app, send email here
+      
       console.log(`Password reset token for ${email}: ${resetToken}`);
 
       res.json({
         status: 'success',
         message: 'Password reset instructions sent to email',
-        resetToken // For testing only
+        resetToken 
       });
     } catch (error) {
       console.error('Forgot password error:', error);
@@ -301,18 +301,18 @@ const authController = {
     }
   },
 
-  // Reset password
+  
   resetPassword: async (req, res) => {
     try {
       const { token, newPassword } = req.body;
 
-      // Verify token
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Hash new password
+      
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      // Update user password
+      
       await User.updatePassword(decoded.id, hashedPassword);
 
       res.json({

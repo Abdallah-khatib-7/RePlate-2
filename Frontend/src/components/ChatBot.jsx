@@ -1,4 +1,4 @@
-// src/components/Chatbot.jsx - PERFECT VERSION
+
 import React, { useState, useRef, useEffect } from 'react';
 import { chatWithAI } from '../services/chatbotService';
 

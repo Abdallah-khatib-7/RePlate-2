@@ -5,7 +5,7 @@ class User {
     console.log('📋 UserModel.create() called with:', userData);
     
     try {
-      // Handle NULL values properly
+      
       const sql = `
         INSERT INTO users 
         (email, password, full_name, phone, address, user_type, google_id, email_verified) 
@@ -29,7 +29,7 @@ class User {
       const result = await pool.execute(sql, params);
       console.log('✅ Insert result:', result);
       
-      // Handle the result structure properly
+      
       const rows = Array.isArray(result) ? result[0] : result;
       return rows.insertId;
       
@@ -50,14 +50,14 @@ class User {
         [email]
       );
       
-      // Handle different result structures
+      
       let rows;
       if (Array.isArray(result) && Array.isArray(result[0])) {
-        rows = result[0]; // [rows, fields] structure
+        rows = result[0]; 
       } else if (Array.isArray(result)) {
-        rows = result; // Direct array of rows
+        rows = result; 
       } else {
-        rows = []; // Default empty array
+        rows = []; 
       }
       
       console.log('📊 Found users:', rows.length);
@@ -76,7 +76,7 @@ class User {
     }
   }
 
-  // ✅ UPDATED: Include is_admin and admin_role in findById
+  
   static async findById(id) {
     try {
       const result = await pool.execute(
