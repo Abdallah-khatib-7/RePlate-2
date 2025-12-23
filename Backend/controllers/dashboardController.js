@@ -55,18 +55,25 @@ const dashboardController = {
       
       // First, let's get completed claims
       const [history] = await pool.execute(`
-        SELECT 
-          c.id, c.claimed_at, c.status,
-          fl.title AS food_title, fl.quantity, fl.price,
-          u.full_name AS restaurant_name, fl.city
-        FROM claims c
-        JOIN food_listings fl ON c.food_id = fl.id
-        JOIN users u ON fl.donor_id = u.id
-        WHERE c.recipient_id = ? 
-        AND c.status = 'completed'
-        ORDER BY c.claimed_at DESC
-        LIMIT 10
-      `, [userId]);
+  SELECT 
+    c.id AS claim_id,
+    c.food_id,                    -- ✅ THIS IS THE FIX
+    c.claimed_at,
+    c.status,
+    fl.title AS food_title,
+    fl.quantity,
+    fl.price,
+    fl.city,
+    u.full_name AS restaurant_name
+  FROM claims c
+  JOIN food_listings fl ON c.food_id = fl.id
+  JOIN users u ON fl.donor_id = u.id
+  WHERE c.recipient_id = ? 
+  AND c.status = 'completed'
+  ORDER BY c.claimed_at DESC
+  LIMIT 10
+`, [userId]);
+
 
       console.log('Pickup history found:', history.length);
 

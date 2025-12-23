@@ -596,19 +596,27 @@ const Dashboard = () => {
   type="button"
   onClick={() =>{
 
-  localStorage.setItem('claimId', history.id);
+  localStorage.setItem('claimId', history.claim_id);
   localStorage.setItem('foodId', history.food_id);
   localStorage.setItem('foodTitle', history.food_title);
   localStorage.setItem('restaurantName', history.restaurant_name);
-    
+   console.log('RATE DEBUG:', {
+  history_id: history.id,
+  claim_id: history.claim_id,
+  food_id: history.food_id,
+  fullRow: history
+});
+
+
     navigate('/rate', {
-      state: {
-        claimId: history.id,
-        foodId: history.food_id,
-        foodTitle: history.food_title,
-        restaurantName: history.restaurant_name
-      }
-    })
+  state: {
+    claimId: history.claim_id,   // ✅ REAL claims.id
+    foodId: history.food_id,     // ✅ correct
+    foodTitle: history.food_title,
+    restaurantName: history.restaurant_name
+  }
+})
+
   }
 }
   className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
