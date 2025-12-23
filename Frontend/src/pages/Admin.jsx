@@ -20,7 +20,19 @@ import {
   Filter,
   Download,
   RefreshCw,
-  Home
+  Home,
+  MapPin,
+  Calendar,
+  Clock,
+  User,
+  Mail,
+  Phone,
+  Star,
+  MessageSquare,
+  Award,
+  Scale,
+  Thermometer,
+  Truck
 } from 'lucide-react';
 
 const API_URL = 'http://localhost:5000/api';
@@ -47,6 +59,9 @@ const Admin = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [userActionLoading, setUserActionLoading] = useState(false);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+  const [viewUser, setViewUser] = useState(null);
+  const [viewClaim, setViewClaim] = useState(null);
+  const [viewFood, setViewFood] = useState(null);
 
   useEffect(() => {
     checkAdminAuth();
@@ -60,27 +75,26 @@ const Admin = () => {
   }, [activeTab]);
 
   const checkAdminAuth = async () => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
 
-  if (!token || !user) {
-    navigate('/login');
-    return;
-  }
+    if (!token || !user) {
+      navigate('/login');
+      return;
+    }
 
-  const isAdmin =
-    user.user_type === 'admin' ||
-    user.is_admin === 1;
+    const isAdmin =
+      user.user_type === 'admin' ||
+      user.is_admin === 1;
 
-  if (!isAdmin) {
-    navigate('/login');
-    return;
-  }
+    if (!isAdmin) {
+      navigate('/login');
+      return;
+    }
 
-  await fetchDashboardStats();
-  setLoading(false);
-};
-
+    await fetchDashboardStats();
+    setLoading(false);
+  };
 
   const fetchDashboardStats = async () => {
     try {
@@ -309,13 +323,12 @@ const Admin = () => {
   };
 
   const handleLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  localStorage.removeItem('user_type');
-  localStorage.removeItem('isAdmin');
-  navigate('/login');
-};
-
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('user_type');
+    localStorage.removeItem('isAdmin');
+    navigate('/login');
+  };
 
   const handleRefresh = () => {
     if (activeTab === 'dashboard') fetchDashboardStats();
@@ -351,7 +364,8 @@ const Admin = () => {
       cancelled: { color: 'bg-red-100 text-red-800', icon: <XCircle className="w-4 h-4" /> },
       available: { color: 'bg-blue-100 text-blue-800', icon: <Package className="w-4 h-4" /> },
       reserved: { color: 'bg-yellow-100 text-yellow-800', icon: <AlertCircle className="w-4 h-4" /> },
-      claimed: { color: 'bg-purple-100 text-purple-800', icon: <CheckCircle className="w-4 h-4" /> }
+      claimed: { color: 'bg-purple-100 text-purple-800', icon: <CheckCircle className="w-4 h-4" /> },
+      expired: { color: 'bg-gray-100 text-gray-800', icon: <XCircle className="w-4 h-4" /> }
     };
     
     const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', icon: null };
@@ -554,7 +568,7 @@ const Admin = () => {
                 </div>
                 <div className="mt-4">
                   <p className="text-xs text-gray-400">Completed Claims</p>
-                  <p className="font-bold text-green-400">{stats.totalCompletedClaims || 0}</p>
+                    <p className="font-bold text-green-400">{stats.totalCompletedClaims || 0}</p>
                 </div>
               </div>
 
@@ -672,7 +686,7 @@ const Admin = () => {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => navigate(`/profile/${user.id}`)}
+                            onClick={() => setViewUser(user)}
                             className="p-1.5 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
                             title="View Profile"
                           >
@@ -756,7 +770,7 @@ const Admin = () => {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => navigate(`/food/${food.id}`)}
+                          onClick={() => setViewFood(food)}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
                         >
                           View
@@ -801,7 +815,7 @@ const Admin = () => {
                 <tbody>
                   {claims.map((claim) => (
                     <tr key={claim.id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                      <td className="py-3 px-4 font-mono">{claim.id}</td>
+                      <td className="py-3 px-4 font-mono">#{claim.id}</td>
                       <td className="py-3 px-4">
                         <div>
                           <p className="font-bold">{claim.food_title}</p>
@@ -823,6 +837,12 @@ const Admin = () => {
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           <button
+                            onClick={() => setViewClaim(claim)}
+                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
+                          >
+                            Details
+                          </button>
+                          <button
                             onClick={() => handleUpdateClaimStatus(claim.id, 'completed')}
                             className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors"
                             disabled={claim.status === 'completed'}
@@ -835,12 +855,6 @@ const Admin = () => {
                             disabled={claim.status === 'cancelled'}
                           >
                             Cancel
-                          </button>
-                          <button
-                            onClick={() => navigate(`/claim/${claim.id}`)}
-                            className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
-                          >
-                            Details
                           </button>
                         </div>
                       </td>
@@ -1000,6 +1014,366 @@ const Admin = () => {
           </div>
         )}
       </main>
+
+      {/* User Profile Modal */}
+      {viewUser && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-gray-800 text-white rounded-xl w-full max-w-md p-6 relative">
+            
+            <button
+              onClick={() => setViewUser(null)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-2xl font-bold mb-4">👤 User Profile</h2>
+
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-gray-400">Name:</span>
+                <div className="font-bold">{viewUser.full_name || 'N/A'}</div>
+              </div>
+
+              <div>
+                <span className="text-gray-400">Email:</span>
+                <div className="font-bold">{viewUser.email}</div>
+              </div>
+
+              <div>
+                <span className="text-gray-400">User Type:</span>
+                <div className="font-bold capitalize">{viewUser.user_type}</div>
+              </div>
+
+              <div>
+                <span className="text-gray-400">Admin:</span>
+                <div className="font-bold">
+                  {viewUser.is_admin ? 'Yes' : 'No'}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-gray-400">Joined:</span>
+                <div className="font-bold">
+                  {new Date(viewUser.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Food Details Modal */}
+      {viewFood && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 text-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+            
+            <button
+              onClick={() => setViewFood(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl z-10"
+            >
+              ✕
+            </button>
+
+            {viewFood.image_url && (
+              <div className="h-64 w-full overflow-hidden">
+                <img
+                  src={viewFood.image_url}
+                  alt={viewFood.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">{viewFood.title}</h2>
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Package className="w-4 h-4" />
+                    <span>Food Listing #{viewFood.id}</span>
+                  </div>
+                </div>
+                {getStatusBadge(viewFood.status)}
+              </div>
+
+              <p className="text-gray-300 mb-6">{viewFood.description}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Food Details */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    Food Details
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-900/50 p-3 rounded-lg">
+                      <div className="text-xs text-gray-400">Quantity</div>
+                      <div className="font-bold text-lg">{viewFood.quantity} meals</div>
+                    </div>
+                    <div className="bg-gray-900/50 p-3 rounded-lg">
+                      <div className="text-xs text-gray-400">Price</div>
+                      <div className="font-bold text-lg text-green-400">${viewFood.price}</div>
+                    </div>
+                    <div className="bg-gray-900/50 p-3 rounded-lg">
+                      <div className="text-xs text-gray-400">Category</div>
+                      <div className="font-bold">{viewFood.category || 'General'}</div>
+                    </div>
+                    <div className="bg-gray-900/50 p-3 rounded-lg">
+                      <div className="text-xs text-gray-400">Allergens</div>
+                      <div className="font-bold">{viewFood.allergens || 'None specified'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location & Timing */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Location & Timing
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <div className="font-bold">{viewFood.city}</div>
+                        <div className="text-sm text-gray-400">{viewFood.address || 'Address not specified'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <div className="font-bold">Pickup Time</div>
+                        <div className="text-sm text-gray-400">{formatDate(viewFood.pickup_time)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <div className="font-bold">Expires</div>
+                        <div className="text-sm text-gray-400">{formatDate(viewFood.expiry_date || viewFood.pickup_time)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Donor Information */}
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Donor Information
+                </h3>
+                <div className="bg-gray-900/50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-xs text-gray-400">Donor Name</div>
+                      <div className="font-bold">{viewFood.donor_name}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Restaurant</div>
+                      <div className="font-bold">{viewFood.restaurant_name || 'Individual Donor'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Contact</div>
+                      <div className="font-bold">{viewFood.donor_email || 'No contact provided'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-700">
+                <button
+                  onClick={() => handleDeleteFoodListing(viewFood.id)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                >
+                  Delete Listing
+                </button>
+                <button
+                  onClick={() => setViewFood(null)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Claim Details Modal */}
+      {viewClaim && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 text-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+            
+            <button
+              onClick={() => setViewClaim(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl z-10"
+            >
+              ✕
+            </button>
+
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Claim #{viewClaim.id}</h2>
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <DollarSign className="w-4 h-4" />
+                    <span>Total: ${viewClaim.price}</span>
+                    <span>•</span>
+                    <span>{formatDate(viewClaim.claimed_at)}</span>
+                  </div>
+                </div>
+                {getStatusBadge(viewClaim.status)}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                {/* Food Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    Food Item
+                  </h3>
+                  <div className="bg-gray-900/50 p-4 rounded-lg">
+                    <div className="mb-3">
+                      <div className="text-xs text-gray-400">Food Title</div>
+                      <div className="font-bold text-lg">{viewClaim.food_title}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-xs text-gray-400">Price</div>
+                        <div className="font-bold text-green-400">${viewClaim.price}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-400">Quantity</div>
+                        <div className="font-bold">{viewClaim.quantity || '1'} meal(s)</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-400">Donor</div>
+                        <div className="font-bold">{viewClaim.donor_name}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-400">Location</div>
+                        <div className="font-bold">{viewClaim.city}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recipient Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <User className="w-5 h-5" />
+                    Recipient Details
+                  </h3>
+                  <div className="bg-gray-900/50 p-4 rounded-lg">
+                    <div className="mb-3">
+                      <div className="text-xs text-gray-400">Recipient Name</div>
+                      <div className="font-bold text-lg">{viewClaim.recipient_name}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{viewClaim.recipient_email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{viewClaim.recipient_phone || 'No phone provided'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Claim Timeline */}
+              <div className="mb-8">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Claim Timeline
+                </h3>
+                <div className="bg-gray-900/50 p-4 rounded-lg">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span>Claim Created</span>
+                      </div>
+                      <span className="text-sm text-gray-400">{formatDate(viewClaim.claimed_at)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${
+                          viewClaim.status === 'completed' || viewClaim.status === 'cancelled' 
+                            ? 'bg-blue-500' 
+                            : 'bg-gray-600'
+                        }`}></div>
+                        <span>Processing</span>
+                      </div>
+                      <span className="text-sm text-gray-400">
+                        {viewClaim.updated_at ? formatDate(viewClaim.updated_at) : 'In progress'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${
+                          viewClaim.status === 'completed' 
+                            ? 'bg-green-500' 
+                            : viewClaim.status === 'cancelled'
+                            ? 'bg-red-500'
+                            : 'bg-gray-600'
+                        }`}></div>
+                        <span className="capitalize">{viewClaim.status}</span>
+                      </div>
+                      <span className="text-sm text-gray-400">
+                        {viewClaim.status === 'completed' || viewClaim.status === 'cancelled'
+                          ? formatDate(viewClaim.updated_at)
+                          : 'Pending'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-lg font-bold mb-4">Admin Actions</h3>
+                <div className="flex flex-wrap gap-3">
+                  {viewClaim.status !== 'completed' && (
+                    <button
+                      onClick={() => {
+                        handleUpdateClaimStatus(viewClaim.id, 'completed');
+                        setViewClaim({...viewClaim, status: 'completed'});
+                      }}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                    >
+                      Mark as Completed
+                    </button>
+                  )}
+                  {viewClaim.status !== 'cancelled' && (
+                    <button
+                      onClick={() => {
+                        handleUpdateClaimStatus(viewClaim.id, 'cancelled');
+                        setViewClaim({...viewClaim, status: 'cancelled'});
+                      }}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    >
+                      Cancel Claim
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setViewClaim(null)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

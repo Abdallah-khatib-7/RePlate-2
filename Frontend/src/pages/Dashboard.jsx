@@ -678,7 +678,7 @@ const Dashboard = () => {
                 <p className="font-semibold">Payment Methods</p>
               </button>
               <button
-                onClick={() => navigate('/help')}
+                onClick={() => navigate('/contact')}
                 className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200"
               >
                 <div className="text-2xl mb-2">❓</div>
